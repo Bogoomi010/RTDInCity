@@ -58,4 +58,24 @@ export class Mob extends Phaser.GameObjects.Image {
     // 더 강한 감속이거나 기존 감속이 끝났으면 갱신
     if (pct >= this.slowPct || now >= this.slowUntil) {
       this.slowPct = Math.min(pct, 0.9);
-      this.slowUntil = now + d
+      this.slowUntil = now + durMs;
+    }
+  }
+
+  applyStun(durMs: number, now: number): void {
+    this.stunUntil = Math.max(this.stunUntil, now + durMs);
+  }
+
+  applyShred(amount: number, durMs: number, now: number): void {
+    if (amount >= this.shredAmt || now >= this.shredUntil) {
+      this.shredAmt = amount;
+      this.shredUntil = now + durMs;
+    }
+  }
+
+  /** 방깎 디버프가 적용된 현재 방어력 */
+  effArmor(now: number): number {
+    const shred = now < this.shredUntil ? this.shredAmt : 0;
+    return Math.max(0, this.armor - shred);
+  }
+}
