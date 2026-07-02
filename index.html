@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>랜덤 조합 디펜스 in City</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: #0d0f14;
+        font-family: "Segoe UI", "Malgun Gothic", sans-serif;
+        user-select: none;
+        -webkit-user-select: none;
+      }
+      #wrap {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 1280px;
+        height: 720px;
+        transform-origin: top left;
+      }
+      #app canvas {
+        display: block;
+      }
+      #ui {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        color: #e8eaed;
+      }
+      #topbar {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 52px;
+        display: flex;
+        align-items: center;
+        gap: 28px;
+        padding: 0 24px;
+        background: rgba(13, 15, 20, 0.78);
+        font-size: 15px;
+        box-sizing: border-box;
+      }
+      #topbar .stat b {
+        color: #ffd166;
+        font-variant-numeric: tabular-nums;
+      }
+      #panel {
+        position: absolute;
+        right: 14px;
+        top: 66px;
+        width: 306px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        pointer-events: auto;
+      }
+      button.big {
+        padding: 14px 16px;
+        font-size: 16px;
+        font-weight: 700;
+        color: #fff;
+        background: #2f6fed;
+        border: none;
+        border-radius: 10px;
+        cursor: pointer;
+      }
+      button.big:hover {
+        background: #4681f4;
+      }
+      button.big:disabled {
+        background: #3a4152;
+        cursor: default;
+      }
+      #unitInfo {
+        background: rgba(255, 255, 255, 0.06);
+        border-radius: 10px;
+        padding: 12px 14px;
+        font-size: 13px;
+        line-height: 1.55;
+        min-height: 92px;
+      }
+      #unitInfo .grade {
+        font-weight: 700;
+      }
+      #recipes {
+        background: rgba(255, 255, 255, 0.06);
+        border-radius: 10px;
+        padding: 10px 12px;
+        font-size: 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      #recipes .rtitle {
+        font-weight: 700;
+        font-size: 13px;
+        color: #26c6da;
+      }
+      #recipes .rrow {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+      #recipes .rbtn {
+        padding: 6px 10px;
+        font-size: 13px;
+        font-weight: 700;
+        color: #fff;
+        background: #00838f;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        text-align: left;
+      }
+      #recipes .rbtn:hover:not(:disabled) {
+        background: #00acc1;
+      }
+      #recipes .rbtn:disabled {
+        background: #2a303c;
+        color: #7c828c;
+        cursor: defau
