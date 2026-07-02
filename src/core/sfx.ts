@@ -86,4 +86,4 @@ export class Sfx {
   }
 }
 
-export const sfx = new 
+export const sfx = new Sfx();

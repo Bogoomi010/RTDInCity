@@ -73,7 +73,7 @@ export class Unit extends Phaser.GameObjects.Container {
     this.ring.setVisible(sel);
   }
 
-  moveTo(col: number, row: number): void {
+  moveToCell(col: number, row: number): void {
     this.col = col;
     this.row = row;
     const c = cellCenter(col, row);
@@ -116,4 +116,20 @@ export class Unit extends Phaser.GameObjects.Container {
       const ty = target.y;
       for (const m of [...ctx.mobs]) {
         if (m.dead) continue;
-        const dx = m.x - t
+        const dx = m.x - tx;
+        const dy = m.y - ty;
+        if (dx * dx + dy * dy > s2) continue;
+        if (this.def.shredAmt && this.def.shredMs) {
+          m.applyShred(this.def.shredAmt, this.def.shredMs, ctx.now);
+        }
+        ctx.damage(m, this.def.atk, this.def.dmgType);
+      }
+      return;
+    }
+
+    if (this.def.shredAmt && this.def.shredMs) {
+      target.applyShred(this.def.shredAmt, this.def.shredMs, ctx.now);
+    }
+    ctx.damage(target, this.def.atk, this.def.dmgType);
+  }
+}

@@ -21,6 +21,7 @@ import {
   roundClearBonus,
 } from "../data/waves";
 import {
+  GRADE_COLOR,
   GRADE_NAME,
   nextGrade,
   randomUnitOfGrade,
@@ -118,7 +119,7 @@ export class GameScene extends Phaser.Scene {
       if (this.over || this.paused) return;
       const cell = cellFromPoint(p.worldX, p.worldY);
       if (this.selected && cell && !this.unitAt(cell.col, cell.row)) {
-        this.selected.moveTo(cell.col, cell.row);
+        this.selected.moveToCell(cell.col, cell.row);
       }
       this.selectUnit(null);
     });
@@ -283,4 +284,259 @@ export class GameScene extends Phaser.Scene {
     sfx.card();
     const cards = drawCards(3);
     this.hud.offerCards(cards, (id) => {
-   
+      const card = cards.find((c) => c.id === id);
+      if (!card) return;
+      this.applyCard(card.effect);
+      this.paused = false;
+      this.refreshRecipes();
+      sfx.power();
+    });
+  }
+
+  private applyCard(effect: CardEffect): void {
+    switch (effect.kind) {
+      case "atkMul":
+        this.mods.atkMul *= effect.mul;
+        break;
+      case "cdMul":
+        this.mods.cdMul *= effect.mul;
+        break;
+      case "rangeMul":
+        this.mods.rangeMul *= effect.mul;
+        break;
+      case "physMul":
+        this.mods.physMul *= effect.mul;
+        break;
+      case "magicMul":
+        this.mods.magicMul *= effect.mul;
+        break;
+      case "mobSpeedMul":
+        this.mods.mobSpeedMul *= effect.mul;
+        break;
+      case "gold":
+        this.gold += effect.amount;
+        break;
+      case "gachaDiscount":
+        this.mods.gachaDiscount += effect.amount;
+        break;
+      case "death":
+        this.death += effect.amount;
+        break;
+      case "freeUnit":
+        if (!this.placeNewUnit(() => randomUnitOfGrade(effect.grade))) {
+          this.hud.message("빈 칸이 없어 지원 유닛을 받을 수 없습니다");
+        }
+        break;
+    }
+  }
+
+  // ---------- 합성 / 조합 ----------
+
+  private merge(): void {
+    if (this.over || this.paused || !this.selected) return;
+
+    const base = this.selected;
+
+    // 전설 유닛: 종류 무관 전설 2기 → 랜덤 초월 (레시피 없이도 초월 획득 가능한 천장)
+    if (base.def.grade === "legendary") {
+      const partner = this.units.find(
+        (u) => u !== base && u.def.grade === "legendary"
+      );
+      if (!partner) {
+        this.hud.message("전설 유닛이 2기 필요합니다");
+        return;
+      }
+      const col = base.col;
+      const row = base.row;
+      this.removeUnit(base);
+      this.removeUnit(partner);
+
+      const def = randomUnitOfGrade("transcendent");
+      const unit = this.addUnit(def, col, row);
+      this.selectUnit(unit);
+      this.hud.message(`⚡ 초월 강림! ${def.name}!`);
+      this.refreshRecipes();
+      sfx.power();
+      return;
+    }
+
+    const grade = nextGrade(base.def.grade);
+    if (!grade) {
+      this.hud.message(`${GRADE_NAME[base.def.grade]} 유닛은 합성할 수 없습니다`);
+      return;
+    }
+
+    const partner = this.units.find(
+      (u) => u !== base && u.def.id === base.def.id
+    );
+    if (!partner) {
+      this.hud.message("같은 유닛이 2기 필요합니다");
+      return;
+    }
+
+    const col = base.col;
+    const row = base.row;
+    this.removeUnit(base);
+    this.removeUnit(partner);
+
+    const def = randomUnitOfGrade(grade);
+    const unit = this.addUnit(def, col, row);
+    this.selectUnit(unit);
+    this.hud.message(`${GRADE_NAME[grade]} ${def.name} 합성!`);
+    this.refreshRecipes();
+    sfx.power();
+  }
+
+  private craft(recipeId: string): void {
+    if (this.over || this.paused) return;
+
+    const recipe = RECIPES.find((r) => r.resultId === recipeId);
+    if (!recipe) return;
+
+    const materials: Unit[] = [];
+    for (const id of recipe.materials) {
+      const unit = this.units.find(
+        (u) => u.def.id === id && !materials.includes(u)
+      );
+      if (!unit) {
+        this.hud.message("조합 재료가 부족합니다");
+        return;
+      }
+      materials.push(unit);
+    }
+
+    const anchor = materials[0];
+    const col = anchor.col;
+    const row = anchor.row;
+    for (const unit of materials) this.removeUnit(unit);
+
+    const def = UNIT_BY_ID[recipe.resultId];
+    const crafted = this.addUnit(def, col, row);
+    this.selectUnit(crafted);
+    this.hud.message(`${def.name} 조합 완료!`);
+    this.refreshRecipes();
+    sfx.power();
+  }
+
+  private refreshRecipes(): void {
+    this.hud.recipes(
+      RECIPES.map((recipe) => {
+        const result = UNIT_BY_ID[recipe.resultId];
+        return {
+          id: recipe.resultId,
+          name: result.name,
+          ok: recipe.materials.every((id) =>
+            this.units.some((u) => u.def.id === id)
+          ),
+          crafted: this.units.some((u) => u.def.id === recipe.resultId),
+          mats: recipe.materials.map((id) => ({
+            name: UNIT_BY_ID[id].name,
+            have: this.units.some((u) => u.def.id === id),
+          })),
+        };
+      })
+    );
+  }
+
+  // ---------- 표시 / 상태 ----------
+
+  private drawBoard(): void {
+    this.cameras.main.setBackgroundColor("#12151c");
+
+    const g = this.add.graphics().setDepth(0);
+    const path = [
+      new Phaser.Geom.Point(TRACK.left, TRACK.top),
+      new Phaser.Geom.Point(TRACK.right, TRACK.top),
+      new Phaser.Geom.Point(TRACK.right, TRACK.bottom),
+      new Phaser.Geom.Point(TRACK.left, TRACK.bottom),
+    ];
+
+    g.lineStyle(48, 0x2b303b, 1);
+    g.strokePoints(path, true, true);
+    g.lineStyle(4, 0x485063, 1);
+    g.strokePoints(path, true, true);
+
+    for (let col = 0; col < GRID.cols; col++) {
+      for (let row = 0; row < GRID.rows; row++) {
+        const x = GRID.x + col * GRID.cell;
+        const y = GRID.y + row * GRID.cell;
+        g.fillStyle(0x1c2430, 0.88);
+        g.fillRoundedRect(x + 5, y + 5, GRID.cell - 10, GRID.cell - 10, 8);
+        g.lineStyle(1, 0x536174, 0.85);
+        g.strokeRoundedRect(x + 5, y + 5, GRID.cell - 10, GRID.cell - 10, 8);
+      }
+    }
+  }
+
+  private drawHpBars(): void {
+    this.hpG.clear();
+    for (const m of this.mobs) {
+      if (m.dead) continue;
+      const w = m.isBoss ? 58 : 30;
+      const h = m.isBoss ? 7 : 5;
+      const y = m.y - (m.isBoss ? 31 : 19);
+      const ratio = Phaser.Math.Clamp(m.hp / m.maxHp, 0, 1);
+      this.hpG.fillStyle(0x000000, 0.65);
+      this.hpG.fillRect(m.x - w / 2, y, w, h);
+      this.hpG.fillStyle(m.isBoss ? 0xff2e2e : 0x65d46e, 1);
+      this.hpG.fillRect(m.x - w / 2, y, w * ratio, h);
+    }
+  }
+
+  private selectUnit(unit: Unit | null): void {
+    if (this.selected) this.selected.setSelected(false);
+    this.selected = unit;
+    this.selG.clear();
+
+    if (!unit) {
+      this.hud.unitInfo(null, 0);
+      return;
+    }
+
+    unit.setSelected(true);
+    const x = GRID.x + unit.col * GRID.cell + 5;
+    const y = GRID.y + unit.row * GRID.cell + 5;
+    this.selG.lineStyle(3, GRADE_COLOR[unit.def.grade], 0.95);
+    this.selG.strokeRoundedRect(x, y, GRID.cell - 10, GRID.cell - 10, 8);
+
+    // 전설은 종류 무관 2기로 초월 합성이 가능하므로 전설 전체 수를 전달
+    const sameCount =
+      unit.def.grade === "legendary"
+        ? this.units.filter((u) => u.def.grade === "legendary").length
+        : this.units.filter((u) => u.def.id === unit.def.id).length;
+    this.hud.unitInfo(unit.def, sameCount);
+  }
+
+  private unitAt(col: number, row: number): Unit | undefined {
+    return this.units.find((u) => u.col === col && u.row === row);
+  }
+
+  private addUnit(def: ReturnType<typeof randomUnitOfGrade>, col: number, row: number): Unit {
+    const unit = new Unit(this, def, col, row, (u) => this.selectUnit(u));
+    this.units.push(unit);
+    return unit;
+  }
+
+  private removeUnit(unit: Unit): void {
+    const i = this.units.indexOf(unit);
+    if (i >= 0) this.units.splice(i, 1);
+    if (this.selected === unit) this.selected = null;
+    unit.destroy();
+  }
+
+  private gameOver(win: boolean, reason: string): void {
+    if (this.over) return;
+    this.over = true;
+    this.paused = false;
+    this.wave.stop();
+    this.selectUnit(null);
+    if (win) sfx.win();
+    else sfx.lose();
+
+    const round = this.wave.round;
+    void updateRecords(win, round).then((records) => {
+      const desc = `${reason}\n라운드 ${round} · 처치 ${this.kills} · 최고 라운드 ${records.bestRound}`;
+      this.hud.result(win, desc, () => this.scene.restart());
+    });
+  }
+}

@@ -54,4 +54,37 @@ export class TitleScene extends Phaser.Scene {
       .setInteractive({ useHandCursor: true });
 
     start.on("pointerover", () => start.setBackgroundColor("#4681f4"));
-    start.on("
+    start.on("pointerout", () => start.setBackgroundColor("#2f6fed"));
+    start.on("pointerdown", () => {
+      sfx.init();
+      this.scene.start("game");
+    });
+
+    const records = this.add
+      .text(cx, GAME_H * 0.9, "기록 불러오는 중...", {
+        fontSize: "16px",
+        color: "#b8bcc4",
+        fontFamily: '"Segoe UI", "Malgun Gothic", sans-serif',
+      })
+      .setOrigin(0.5);
+
+    void loadRecords().then((r) => {
+      records.setText(
+        `최고 라운드 ${r.bestRound} · 승리 ${r.wins} · 플레이 ${r.plays}`
+      );
+    });
+
+    const settings = this.add
+      .text(GAME_W - 36, 32, "⚙", {
+        fontSize: "28px",
+        color: "#e8eaed",
+        fontFamily: '"Segoe UI", "Malgun Gothic", sans-serif',
+      })
+      .setOrigin(0.5)
+      .setInteractive({ useHandCursor: true });
+
+    settings.on("pointerover", () => settings.setColor("#ffd166"));
+    settings.on("pointerout", () => settings.setColor("#e8eaed"));
+    settings.on("pointerdown", () => settingsUI.open());
+  }
+}

@@ -104,5 +104,112 @@ export class Hud {
     }, 2200);
   }
 
-  /** sameCount: 필드 위 동일 유닛 수 (선택된 유닛 포함) */
-  unitIn
+  /**
+   * sameCount: 필드 위 동일 유닛 수 (선택된 유닛 포함).
+   * 단, 전설 유닛이면 필드 위 전설 유닛 수 — 전설 2기(종류 무관)로 초월 합성.
+   */
+  unitInfo(unit: UnitDef | null, sameCount: number): void {
+    const el = this.els["unitInfo"];
+    if (!unit) {
+      el.innerHTML = `<div style="color:#8f96a3">유닛을 선택하세요</div>`;
+      return;
+    }
+
+    const isLegendary = unit.grade === "legendary";
+    const next = nextGrade(unit.grade);
+    const canMerge = isLegendary
+      ? sameCount >= 2
+      : next !== null && sameCount >= 2;
+    const countLabel = isLegendary
+      ? `전설 유닛 ${sameCount}/2`
+      : `동일 유닛 ${sameCount}/2`;
+    const mergeLabel = isLegendary
+      ? "⚡ 초월 합성 (랜덤)"
+      : next
+        ? `${GRADE_NAME[next]} 합성`
+        : "합성 불가";
+    el.innerHTML = `
+      <div class="grade" style="color:${GRADE_COLOR_CSS[unit.grade]}">
+        [${GRADE_NAME[unit.grade]}] ${unit.name}
+      </div>
+      <div>공격력 ${unit.atk} · 사거리 ${unit.range} · 주기 ${unit.cooldown}s</div>
+      <div>${unit.dmgType === "phys" ? "물리" : "마법"}${
+        unit.desc ? ` · ${unit.desc}` : ""
+      }</div>
+      <div>${countLabel}</div>
+      <button class="big" id="h-merge" ${canMerge ? "" : "disabled"}>
+        ${mergeLabel}
+      </button>
+    `;
+    el.querySelector("#h-merge")?.addEventListener("click", this.onMerge);
+  }
+
+  recipes(states: RecipeState[]): void {
+    const el = this.els["recipes"];
+    el.innerHTML = `
+      <div class="rtitle">초월 조합</div>
+      ${states
+        .map(
+          (r) => `
+            <div class="rrow">
+              <button class="rbtn" data-recipe="${r.id}" ${
+                r.ok ? "" : "disabled"
+              }>
+                ${r.name}${r.crafted ? " · 보유" : ""}
+              </button>
+              <div>
+                ${r.mats
+                  .map(
+                    (m) =>
+                      `<span class="${m.have ? "have" : "lack"}">${m.name}</span>`
+                  )
+                  .join(" + ")}
+              </div>
+            </div>
+          `
+        )
+        .join("")}
+    `;
+    el.querySelectorAll<HTMLButtonElement>("[data-recipe]").forEach((btn) => {
+      btn.addEventListener("click", () => this.onCraft(btn.dataset.recipe!));
+    });
+  }
+
+  offerCards(cards: CardDef[], onPick: (id: string) => void): void {
+    const el = this.els["cards"];
+    el.style.display = "flex";
+    el.innerHTML = `
+      <div class="ctitle">보상 카드 선택</div>
+      ${cards
+        .map(
+          (card) => `
+            <button class="card" data-card="${card.id}">
+              <div class="cicon">${card.icon}</div>
+              <div class="cname">${card.name}</div>
+              <div class="cdesc">${card.desc}</div>
+            </button>
+          `
+        )
+        .join("")}
+    `;
+    el.querySelectorAll<HTMLButtonElement>("[data-card]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        el.style.display = "none";
+        onPick(btn.dataset.card!);
+      });
+    });
+  }
+
+  result(win: boolean, desc: string, onRetry: () => void): void {
+    this.els["h-rtitle"].textContent = win ? "승리" : "패배";
+    this.els["h-rdesc"].textContent = desc;
+    const retry = this.els["h-retry"] as HTMLButtonElement;
+    retry.onclick = onRetry;
+    this.els["result"].style.display = "flex";
+  }
+
+  destroy(): void {
+    if (this.msgTimer !== undefined) window.clearTimeout(this.msgTimer);
+    this.root.innerHTML = "";
+  }
+}

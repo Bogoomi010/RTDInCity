@@ -24,4 +24,8 @@ function fitToWindow(): void {
   const ty = (window.innerHeight - GAME_H * s) / 2;
   wrap.style.transform = `translate(${tx}px, ${ty}px) scale(${s})`;
   // CSS transform 이후 포인터 좌표 보정을 위해 Phaser에 캔버스 경계 갱신을 알림
-  game.scale.updateBounds
+  game.scale.updateBounds();
+}
+
+fitToWindow();
+window.addEventListener("resize", fitToWindow);
