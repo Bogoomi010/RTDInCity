@@ -45,6 +45,7 @@ export class Hud {
     private onMerge: () => void,
     private onCombo: (key: string) => void,
     private onSummon: (grade: Grade, unitId: string) => void,
+    onRecall: () => void, // 스토리 존 파견 유닛 회수
     onSpeed: () => number, // 클릭 시 배속 순환, 새 배속 반환
     onPause: () => boolean // 클릭 시 토글, 정지 여부 반환
   ) {
@@ -66,6 +67,13 @@ export class Hud {
         <button class="big" id="h-gacha">유닛 뽑기 — ${GACHA_COST}G</button>
         <div id="unitInfo"></div>
         <div id="tickets"></div>
+        <div id="story">
+          <div class="rtitle">📖 스토리 존 <b id="st-ch"></b></div>
+          <div id="st-boss">불러오는 중…</div>
+          <div class="stbar"><div id="st-fill"></div></div>
+          <div id="st-unit"></div>
+          <button class="rbtn" id="st-recall" style="display:none">회수</button>
+        </div>
         <button class="big" id="h-book">📖 조합법</button>
       </div>
       <div id="picker"></div>
@@ -86,7 +94,8 @@ export class Hud {
       <div id="result">
         <h1 id="h-rtitle"></h1>
         <p id="h-rdesc"></p>
-        <button class="big" id="h-retry">다시하기</button>
+        <button class="big" id="h-retry">다시하기 (같은 덱)</button>
+        <button class="big alt" id="h-totitle">타이틀로 — 덱 다시 짜기</button>
       </div>
     `;
     for (const id of [
@@ -98,6 +107,10 @@ export class Hud {
     this.els["msg"] = document.getElementById("msg")!;
     this.els["tickets"] = document.getElementById("tickets")!;
     this.els["picker"] = document.getElementById("picker")!;
+    for (const id of ["st-ch", "st-boss", "st-fill", "st-unit", "st-recall"]) {
+      this.els[id] = document.getElementById(id)!;
+    }
+    this.els["st-recall"].addEventListener("click", onRecall);
     this.els["book"] = document.getElementById("book")!;
     this.els["btabs"] = document.getElementById("btabs")!;
     this.els["blist"] = document.getElementById("blist")!;
@@ -121,6 +134,12 @@ export class Hud {
     document.getElementById("h-bookclose")!.addEventListener("click", () => {
       this.els["book"].style.display = "none";
     });
+    // 모달 배경 클릭 = 닫기
+    for (const id of ["book", "picker"]) {
+      this.els[id].addEventListener("click", (e) => {
+        if (e.target === this.els[id]) this.els[id].style.display = "none";
+      });
+    }
     const speedBtn = document.getElementById("h-speed")!;
     speedBtn.addEventListener("click", () => {
       speedBtn.textContent = `x${onSpeed()}`;
@@ -138,7 +157,10 @@ export class Hud {
       s.state === "break" ? `다음 라운드 ${s.timeLeft}s` : `${s.timeLeft}s`;
     this.els["h-phase"].textContent = `${s.isDay ? "☀" : "🌙"} ${s.phaseLeft}s`;
     this.els["h-mobs"].textContent = `${s.mobs}/${s.cap}`;
+    // 위험 상태 강조 — 몹 캡 임박 / 데스 부족
+    this.els["h-mobs"].style.color = s.mobs >= s.cap * 0.8 ? "#ff6b6b" : "";
     this.els["h-death"].textContent = String(s.death);
+    this.els["h-death"].style.color = s.death <= 3 ? "#ff6b6b" : "";
     this.els["h-gold"].textContent = String(s.gold);
     const gachaBtn = this.els["h-gacha"] as HTMLButtonElement;
     gachaBtn.disabled = s.gold < s.gachaCost;
@@ -158,12 +180,18 @@ export class Hud {
 
   /**
    * sameCount: 전설 유닛이면 필드 위 전설 유닛 수 — 전설 2기(종류 무관)로 초월 합성.
-   * 그 외 등급은 합성 없음 (성장은 3기 조합·뽑기 담당).
+   * combos: 흔함 유닛이면 이 유닛이 재료인 조합법 목록 (가능한 조합은 빛나고 클릭 = 조합)
    */
-  unitInfo(unit: UnitDef | null, sameCount: number): void {
+  unitInfo(unit: UnitDef | null, sameCount: number, combos: ComboRow[] = []): void {
     const el = this.els["unitInfo"];
     if (!unit) {
-      el.innerHTML = `<div style="color:#8f96a3">유닛을 선택하세요</div>`;
+      el.innerHTML = `
+        <div style="color:#8f96a3">유닛을 선택하세요</div>
+        <div class="hint">
+          클릭: 선택 · 드래그: 부대 선택<br>
+          우클릭: 이동 명령 · Space: 뽑기
+        </div>
+      `;
       return;
     }
 
@@ -183,7 +211,25 @@ export class Hud {
             }에 공격력 +${Math.round((PHASE_BUFF - 1) * 100)}%</div>`
           : ""
       }
-      ${unit.grade === "common" ? `<div style="color:#ffd166">3기 조합 재료</div>` : ""}
+      ${
+        combos.length > 0
+          ? `
+            <div class="crowtitle">관련 조합법</div>
+            <div class="crows">
+              ${combos
+                .map(
+                  (r) => `
+                    <button class="crow ${r.ok ? "ok" : ""}" data-combo="${r.key}" ${r.ok ? "" : "disabled"}>
+                      <span>${r.mats.join(" + ")}</span>
+                      <b style="color:${GRADE_COLOR_CSS[r.grade]}">= ${r.result ?? "???"}</b>
+                    </button>
+                  `
+                )
+                .join("")}
+            </div>
+          `
+          : ""
+      }
       ${
         isLegendary
           ? `
@@ -203,6 +249,37 @@ export class Hud {
       }
     `;
     el.querySelector("#h-merge")?.addEventListener("click", this.onMerge);
+    el.querySelectorAll<HTMLButtonElement>("[data-combo]").forEach((btn) => {
+      btn.addEventListener("click", () => this.onCombo(btn.dataset.combo!));
+    });
+  }
+
+  /** 다중 선택(부대) 표시 */
+  unitInfoMulti(count: number): void {
+    this.els["unitInfo"].innerHTML = `
+      <div class="grade" style="color:#ffd166">부대 선택 — ${count}기</div>
+      <div>우클릭: 지정 위치로 이동</div>
+      <div style="color:#8f96a3">적군 경로 바깥으로는 나갈 수 없다</div>
+    `;
+  }
+
+  // ---------- 📖 스토리 존 ----------
+
+  storyUpdate(
+    chapter: number,
+    title: string,
+    boss: string,
+    hp: number,
+    maxHp: number,
+    unitName: string | null
+  ): void {
+    this.els["st-ch"].textContent = `제${chapter}장`;
+    this.els["st-boss"].textContent = `${title} — ${boss}`;
+    this.els["st-fill"].style.width = `${Math.max(0, Math.min(100, (hp / maxHp) * 100))}%`;
+    this.els["st-unit"].textContent = unitName
+      ? `⚔ 파견 중: ${unitName}`
+      : "유닛 선택 → 좌하단 오두막 우클릭 = 파견";
+    this.els["st-recall"].style.display = unitName ? "" : "none";
   }
 
   // ---------- 🎟 소환권 ----------
@@ -279,8 +356,10 @@ export class Hud {
   comboBook(rows: ComboRow[]): void {
     this.bookRows = rows;
     const craftable = rows.filter((r) => r.ok).length;
-    document.getElementById("h-book")!.textContent =
+    const btn = document.getElementById("h-book")!;
+    btn.textContent =
       craftable > 0 ? `📖 조합법 (지금 가능 ${craftable})` : "📖 조합법";
+    btn.classList.toggle("glow", craftable > 0);
     if (this.els["book"].style.display === "flex") this.renderBook();
   }
 
@@ -346,11 +425,17 @@ export class Hud {
     });
   }
 
-  result(win: boolean, desc: string, onRetry: () => void): void {
+  result(
+    win: boolean,
+    desc: string,
+    onRetry: () => void,
+    onTitle: () => void
+  ): void {
     this.els["h-rtitle"].textContent = win ? "승리" : "패배";
     this.els["h-rdesc"].textContent = desc;
     const retry = this.els["h-retry"] as HTMLButtonElement;
     retry.onclick = onRetry;
+    (document.getElementById("h-totitle") as HTMLButtonElement).onclick = onTitle;
     this.els["result"].style.display = "flex";
   }
 

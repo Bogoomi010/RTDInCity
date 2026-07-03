@@ -1,12 +1,13 @@
 import Phaser from "phaser";
 import {
-  cellFromPoint,
+  cellCenter,
   DEATH_START,
   GACHA_COST,
   GAME_H,
   GAME_W,
   GRID,
   MOB_CAP,
+  PHASE_BUFF,
   PHASE_SEC,
   ROUND_MAX,
   START_GOLD,
@@ -16,16 +17,18 @@ import { PathLoop } from "../core/path";
 import { Mob } from "../entities/Mob";
 import { Unit, type CombatCtx } from "../entities/Unit";
 import { WaveSystem } from "../systems/WaveSystem";
-import { Hud } from "../ui/hud";
+import { Hud, type ComboRow } from "../ui/hud";
 import {
   armorReduction,
   bossStats,
+  DIFFICULTY_DEFS,
   goldenStats,
   mobStats,
   roundClearBonus,
+  setDifficulty,
+  type Difficulty,
 } from "../data/waves";
 import {
-  GRADE_COLOR,
   GRADE_NAME,
   nextGrade,
   randomUnitOfGrade,
@@ -45,7 +48,16 @@ import {
   type Mods,
 } from "../data/cards";
 import { sfx } from "../core/sfx";
-import { addDex, loadDex, updateRecords } from "../core/save";
+import { addDex, loadDex, loadStory, saveStory, updateRecords } from "../core/save";
+import {
+  STORY_POS,
+  storyBossHp,
+  storyChapter,
+  storyReward,
+} from "../data/story";
+
+/** 부대 한도 — 그리드 폐지 후에도 기존 24칸 수용량 유지 */
+const MAX_UNITS = GRID.cols * GRID.rows;
 
 /** 웨이브 보스 처치 시 지급되는 소환권 등급 */
 const BOSS_TICKET: Record<number, Grade> = {
@@ -61,11 +73,23 @@ export class GameScene extends Phaser.Scene {
   private hud!: Hud;
   private mobs: Mob[] = [];
   private units: Unit[] = [];
-  private selected: Unit | null = null;
+  private selectedUnits: Unit[] = [];
+  private dragStart: { x: number; y: number } | null = null;
+  private dragging = false;
+  private marqueeG!: Phaser.GameObjects.Graphics; // 드래그 선택 박스
 
   private deck: string[] = ["dv1", "pc1", "sn1"]; // 덱 선택 없이 진입 시 기본값
+  private difficulty: Difficulty = "normal";
   private dex = new Set<string>(); // 발견한 조합 (판 간 누적, 세이브 연동)
   private tickets: Partial<Record<Grade, number>> = {}; // 🎟 등급별 소환권
+
+  // 📖 스토리 존 — 챕터·보스 HP는 세이브로 판 간 유지
+  private storyChapterNo = 1;
+  private storyHp = 0;
+  private storyMax = 1;
+  private storyLoaded = false;
+  private storyUnit: Unit | null = null; // 파견 중인 유닛 (필드에서 제외)
+  private pendingDispatch: Unit | null = null; // 오두막으로 걸어가는 중
   private gold = START_GOLD;
   private death = DEATH_START;
   private kills = 0;
@@ -87,24 +111,39 @@ export class GameScene extends Phaser.Scene {
   private mods: Mods = defaultMods();
 
   private hpG!: Phaser.GameObjects.Graphics;
-  private selG!: Phaser.GameObjects.Graphics;
   private nightO!: Phaser.GameObjects.Rectangle; // 밤 오버레이 (알파로 낮/밤 연출)
 
   constructor() {
     super("game");
   }
 
-  create(data: { deck?: string[] } = {}): void {
+  create(data: { deck?: string[]; difficulty?: Difficulty } = {}): void {
     if (data.deck?.length === 3) this.deck = data.deck;
+    if (data.difficulty) this.difficulty = data.difficulty;
+    setDifficulty(this.difficulty);
     void loadDex().then((d) => {
       this.dex = new Set(d);
       if (!this.over) this.refreshRecipes();
+    });
+    this.storyChapterNo = 1;
+    this.storyHp = 0;
+    this.storyMax = 1;
+    this.storyLoaded = false;
+    this.storyUnit = null;
+    this.pendingDispatch = null;
+    void loadStory().then((s) => {
+      this.storyChapterNo = s?.chapter ?? 1;
+      this.storyMax = storyBossHp(this.storyChapterNo);
+      this.storyHp = s?.hp ?? this.storyMax;
+      this.storyLoaded = true;
     });
 
     // 상태 초기화 (재시작 대비)
     this.mobs = [];
     this.units = [];
-    this.selected = null;
+    this.selectedUnits = [];
+    this.dragStart = null;
+    this.dragging = false;
     this.gold = START_GOLD;
     this.death = DEATH_START;
     this.kills = 0;
@@ -126,7 +165,7 @@ export class GameScene extends Phaser.Scene {
 
     this.drawBoard();
     this.hpG = this.add.graphics().setDepth(6);
-    this.selG = this.add.graphics().setDepth(3);
+    this.marqueeG = this.add.graphics().setDepth(45);
     this.nightO = this.add
       .rectangle(GAME_W / 2, GAME_H / 2, GAME_W, GAME_H, 0x0b1026, 1)
       .setAlpha(0)
@@ -137,6 +176,7 @@ export class GameScene extends Phaser.Scene {
       () => this.merge(),
       (comboKey) => this.craftCombo(comboKey),
       (grade, unitId) => this.summon(grade, unitId),
+      () => this.recallStory(),
       () => {
         this.speed = (this.speed % 3) + 1;
         return this.speed;
@@ -171,17 +211,66 @@ export class GameScene extends Phaser.Scene {
       victory: () => this.gameOver(true, "도시를 지켜냈습니다!"),
     });
 
-    // 빈 칸 클릭 → 선택 유닛 이동 / 선택 해제
+    // RTS식 조작 — 좌드래그: 다중 선택 / 좌클릭(빈 곳): 해제 / 우클릭: 이동 명령
+    this.input.mouse?.disableContextMenu();
     this.input.on("pointerdown", (p: Phaser.Input.Pointer) => {
       if (this.over || this.halted) return;
       // 상단바·우측 패널 영역 클릭은 무시 — UI 틈새 클릭으로 선택이 풀리는 것 방지
       if (p.worldY < 56 || p.worldX > 950) return;
-      const cell = cellFromPoint(p.worldX, p.worldY);
-      if (this.selected && cell && !this.unitAt(cell.col, cell.row)) {
-        this.selected.moveToCell(cell.col, cell.row);
+      if (p.rightButtonDown()) {
+        this.commandMove(p.worldX, p.worldY);
+        return;
       }
-      this.selectUnit(null);
+      this.dragStart = { x: p.worldX, y: p.worldY };
+      this.dragging = false;
     });
+    this.input.on("pointermove", (p: Phaser.Input.Pointer) => {
+      if (!this.dragStart || !p.isDown) return;
+      if (
+        !this.dragging &&
+        Math.hypot(p.worldX - this.dragStart.x, p.worldY - this.dragStart.y) > 8
+      ) {
+        this.dragging = true;
+      }
+      if (this.dragging) {
+        const x = Math.min(this.dragStart.x, p.worldX);
+        const y = Math.min(this.dragStart.y, p.worldY);
+        const w = Math.abs(p.worldX - this.dragStart.x);
+        const h = Math.abs(p.worldY - this.dragStart.y);
+        this.marqueeG.clear();
+        this.marqueeG.fillStyle(0xffd166, 0.08);
+        this.marqueeG.fillRect(x, y, w, h);
+        this.marqueeG.lineStyle(2, 0xffd166, 0.9);
+        this.marqueeG.strokeRect(x, y, w, h);
+      }
+    });
+    this.input.on("pointerup", (p: Phaser.Input.Pointer) => {
+      if (!this.dragStart) return;
+      const s = this.dragStart;
+      this.dragStart = null;
+      this.marqueeG.clear();
+      if (this.dragging) {
+        this.dragging = false;
+        const x1 = Math.min(s.x, p.worldX);
+        const x2 = Math.max(s.x, p.worldX);
+        const y1 = Math.min(s.y, p.worldY);
+        const y2 = Math.max(s.y, p.worldY);
+        this.selectUnits(
+          this.units.filter(
+            (u) => u.x >= x1 && u.x <= x2 && u.y >= y1 && u.y <= y2
+          )
+        );
+      } else {
+        // 단순 클릭(빈 곳) = 해제 — 유닛 클릭은 유닛 자체 핸들러가 처리
+        this.selectUnits([]);
+      }
+    });
+    // Space = 뽑기 (가장 잦은 행동의 단축키)
+    this.input.keyboard?.on("keydown-SPACE", () => this.gacha());
+
+    if (this.difficulty !== "normal") {
+      this.hud.message(`난이도: ${DIFFICULTY_DEFS[this.difficulty].name}`);
+    }
   }
 
   update(_time: number, delta: number): void {
@@ -229,6 +318,37 @@ export class GameScene extends Phaser.Scene {
       flash: (x1, y1, x2, y2, color) => this.flash(x1, y1, x2, y2, color),
     };
     for (const u of this.units) u.update(ctx, d);
+
+    // 📖 스토리 존 — 도착 시 파견 / 파견 유닛의 DPS로 보스 HP 차감
+    if (this.pendingDispatch) {
+      const u = this.pendingDispatch;
+      if (!this.units.includes(u)) this.pendingDispatch = null;
+      else if (!u.moving) {
+        this.pendingDispatch = null;
+        this.dispatchStory(u);
+      }
+    }
+    if (this.storyUnit && this.storyLoaded) {
+      const def = this.storyUnit.def;
+      const p = def.phase;
+      const buff =
+        p !== undefined && (p === "both" || (p === "day") === day)
+          ? PHASE_BUFF
+          : 1;
+      this.storyHp -= ((def.atk / def.cooldown) * buff * d) / 1000;
+      if (this.storyHp <= 0) this.clearStoryChapter();
+    }
+    if (this.storyLoaded) {
+      const ch = storyChapter(this.storyChapterNo);
+      this.hud.storyUpdate(
+        this.storyChapterNo,
+        ch.title,
+        ch.boss,
+        this.storyHp,
+        this.storyMax,
+        this.storyUnit?.def.name ?? null
+      );
+    }
 
     this.drawHpBars();
     this.hud.update({
@@ -363,24 +483,24 @@ export class GameScene extends Phaser.Scene {
     return Math.max(5, GACHA_COST - this.mods.gachaDiscount);
   }
 
-  private emptyCells(): Array<{ col: number; row: number }> {
-    const empty: Array<{ col: number; row: number }> = [];
-    for (let col = 0; col < GRID.cols; col++) {
-      for (let row = 0; row < GRID.rows; row++) {
-        if (!this.unitAt(col, row)) empty.push({ col, row });
-      }
-    }
-    return empty;
+  /** 트랙 안쪽 랜덤 지점 (그리드 셀 중심 + 흔들림) */
+  private randomSpawnPos(): { x: number; y: number } {
+    const col = Math.floor(Math.random() * GRID.cols);
+    const row = Math.floor(Math.random() * GRID.rows);
+    const c = cellCenter(col, row);
+    return {
+      x: c.x + (Math.random() - 0.5) * 16,
+      y: c.y + (Math.random() - 0.5) * 16,
+    };
   }
 
-  /** 랜덤 빈 칸에 유닛 배치. 성공 여부 반환 */
-  private placeNewUnit(defGetter: () => ReturnType<typeof randomUnitOfGrade>): boolean {
-    const empty = this.emptyCells();
-    if (empty.length === 0) return false;
+  /** 랜덤 위치에 유닛 배치. 성공 여부 반환 (부대 한도 초과 시 실패) */
+  private placeNewUnit(defGetter: () => UnitDef): boolean {
+    if (this.units.length >= MAX_UNITS) return false;
     const def = defGetter();
-    const cell = empty[Math.floor(Math.random() * empty.length)];
-    const unit = new Unit(this, def, cell.col, cell.row, (u) =>
-      this.selectUnit(u)
+    const pos = this.randomSpawnPos();
+    const unit = new Unit(this, def, pos.x, pos.y, (u) =>
+      this.selectUnits([u])
     );
     this.units.push(unit);
     this.hud.message(def.hidden ? `✨ 히든! ${def.name} 획득!` : `${def.name} 획득!`);
@@ -406,7 +526,7 @@ export class GameScene extends Phaser.Scene {
       return;
     }
     if (!this.placeNewUnit(() => this.rollUnit())) {
-      this.hud.message("빈 칸이 없습니다");
+      this.hud.message("부대가 가득 찼습니다 — 조합으로 정리하세요");
       return;
     }
     this.gold -= cost;
@@ -460,7 +580,7 @@ export class GameScene extends Phaser.Scene {
         break;
       case "freeUnit":
         if (!this.placeNewUnit(() => randomUnitOfGrade(effect.grade))) {
-          this.hud.message("빈 칸이 없어 지원 유닛을 받을 수 없습니다");
+          this.hud.message("부대가 가득 차 지원 유닛을 받을 수 없습니다");
         }
         break;
     }
@@ -470,9 +590,9 @@ export class GameScene extends Phaser.Scene {
 
   /** 합성은 전설 2기 → 초월만 존재. 일반 성장은 3기 조합·뽑기가 담당 */
   private merge(): void {
-    if (this.over || this.halted || !this.selected) return;
-
-    const base = this.selected;
+    if (this.over || this.halted) return;
+    const base = this.selectedUnits[0];
+    if (!base) return;
 
     // 전설 2기 → 초월. 지정 페어면 테마를 계승한 지정 초월, 아니면 랜덤(천장)
     if (base.def.grade === "legendary") {
@@ -504,13 +624,13 @@ export class GameScene extends Phaser.Scene {
       partner ??= legends[0];
       resultDef ??= randomUnitOfGrade("transcendent");
 
-      const col = base.col;
-      const row = base.row;
+      const bx = base.x;
+      const by = base.y;
       this.removeUnit(base);
       this.removeUnit(partner);
 
-      const unit = this.addUnit(resultDef, col, row);
-      this.selectUnit(unit);
+      const unit = this.addUnit(resultDef, bx, by);
+      this.selectUnits([unit]);
       this.hud.message(
         isPair ? `⚡ 운명의 페어! ${resultDef.name} 강림!` : `⚡ 초월 강림! ${resultDef.name}!`
       );
@@ -532,17 +652,75 @@ export class GameScene extends Phaser.Scene {
       return;
     }
 
-    const col = base.col;
-    const row = base.row;
+    const bx = base.x;
+    const by = base.y;
     this.removeUnit(base);
     for (const u of sameGrade.slice(0, 2)) this.removeUnit(u);
 
     const def = randomUnitOfGrade(next);
-    const unit = this.addUnit(def, col, row);
-    this.selectUnit(unit);
+    const unit = this.addUnit(def, bx, by);
+    this.selectUnits([unit]);
     this.hud.message(`${GRADE_NAME[next]} ${def.name} 합성!`);
     this.refreshRecipes();
     sfx.power();
+  }
+
+  // ---------- 📖 스토리 존 ----------
+
+  /** 파견: 유닛을 필드에서 빼서 스토리 존으로 (숨김 처리) */
+  private dispatchStory(u: Unit): void {
+    const i = this.units.indexOf(u);
+    if (i >= 0) this.units.splice(i, 1);
+    const si = this.selectedUnits.indexOf(u);
+    if (si >= 0) this.selectUnits(this.selectedUnits.filter((x) => x !== u));
+    u.setVisible(false);
+    u.disableInteractive();
+    this.storyUnit = u;
+    const ch = storyChapter(this.storyChapterNo);
+    this.hud.message(`📖 ${u.def.name} 파견 — [${ch.boss}] 토벌 시작!`);
+    this.refreshRecipes();
+    sfx.power();
+  }
+
+  /** 회수: 오두막 옆으로 복귀 */
+  private recallStory(): void {
+    if (this.over || !this.storyUnit) return;
+    const u = this.storyUnit;
+    this.storyUnit = null;
+    u.setPosition(STORY_POS.x + 56, STORY_POS.y - 10);
+    u.setVisible(true);
+    u.setInteractive({ useHandCursor: true });
+    this.units.push(u);
+    void saveStory({ chapter: this.storyChapterNo, hp: this.storyHp });
+    this.hud.message(`${u.def.name} 복귀`);
+    this.refreshRecipes();
+  }
+
+  /** 챕터 격파: 보상 지급 + 다음 챕터 (파견 유닛은 계속 토벌) */
+  private clearStoryChapter(): void {
+    const ch = storyChapter(this.storyChapterNo);
+    const reward = storyReward(this.storyChapterNo);
+    this.hud.message(`🎉 제${this.storyChapterNo}장 클리어 — [${ch.boss}] 격파!`);
+
+    if (reward.gold) this.gold += reward.gold;
+    if (reward.gachaDiscount) this.mods.gachaDiscount += reward.gachaDiscount;
+    if (reward.death) this.death += reward.death;
+    if (reward.hidden) {
+      this.placeNewUnit(
+        () => UNIT_BY_ID[HIDDEN_IDS[Math.floor(Math.random() * HIDDEN_IDS.length)]]
+      );
+    }
+    for (const [g, n] of reward.tickets ?? []) {
+      this.tickets[g] = (this.tickets[g] ?? 0) + n;
+    }
+    if (reward.card) this.offerCards();
+
+    this.storyChapterNo++;
+    this.storyMax = storyBossHp(this.storyChapterNo);
+    this.storyHp = this.storyMax;
+    void saveStory({ chapter: this.storyChapterNo, hp: this.storyHp });
+    this.refreshRecipes();
+    sfx.win();
   }
 
   /** 🎟 소환권 사용: 해당 등급의 원하는 유닛을 지정 소환 */
@@ -551,15 +729,14 @@ export class GameScene extends Phaser.Scene {
     if ((this.tickets[grade] ?? 0) <= 0) return;
     const def = UNIT_BY_ID[unitId];
     if (!def || def.grade !== grade) return;
-    const empty = this.emptyCells();
-    if (empty.length === 0) {
-      this.hud.message("빈 칸이 없습니다");
+    if (this.units.length >= MAX_UNITS) {
+      this.hud.message("부대가 가득 찼습니다");
       return;
     }
     this.tickets[grade] = this.tickets[grade]! - 1;
-    const cell = empty[Math.floor(Math.random() * empty.length)];
-    const unit = this.addUnit(def, cell.col, cell.row);
-    this.selectUnit(unit);
+    const pos = this.randomSpawnPos();
+    const unit = this.addUnit(def, pos.x, pos.y);
+    this.selectUnits([unit]);
     this.hud.message(`🎟 소환! ${def.name}`);
     this.refreshRecipes();
     sfx.gacha();
@@ -582,13 +759,13 @@ export class GameScene extends Phaser.Scene {
       mats.push(unit);
     }
 
-    const col = mats[0].col;
-    const row = mats[0].row;
+    const bx = mats[0].x;
+    const by = mats[0].y;
     for (const unit of mats) this.removeUnit(unit);
 
     const def = comboResult(ids);
-    const crafted = this.addUnit(def, col, row);
-    this.selectUnit(crafted);
+    const crafted = this.addUnit(def, bx, by);
+    this.selectUnits([crafted]);
 
     if (!this.dex.has(key)) {
       this.dex.add(key);
@@ -601,12 +778,12 @@ export class GameScene extends Phaser.Scene {
     sfx.power();
   }
 
-  private refreshRecipes(): void {
-    // 3기 조합 목록 + 도감
+  /** 이번 덱의 조합 35종 현황 (재료 충족 여부 포함) */
+  private comboRows(): ComboRow[] {
     const counts = new Map<string, number>();
     for (const u of this.units)
       counts.set(u.def.id, (counts.get(u.def.id) ?? 0) + 1);
-    const comboRows = deckComboKeys(this.deck).map((key) => {
+    return deckComboKeys(this.deck).map((key) => {
       const ids = key.split("+");
       const need = new Map<string, number>();
       for (const id of ids) need.set(id, (need.get(id) ?? 0) + 1);
@@ -625,8 +802,13 @@ export class GameScene extends Phaser.Scene {
         ok,
       };
     });
-    this.hud.comboBook(comboRows);
+  }
+
+  private refreshRecipes(): void {
+    this.hud.comboBook(this.comboRows());
     this.hud.tickets(this.tickets);
+    // 단일 선택 중이면 정보 패널의 관련 조합법 활성 상태도 갱신
+    if (this.selectedUnits.length === 1) this.selectUnits(this.selectedUnits);
   }
 
   // ---------- 표시 / 상태 ----------
@@ -695,6 +877,26 @@ export class GameScene extends Phaser.Scene {
       }
     }
 
+    // 📖 스토리 존 오두막 (트랙 안쪽 좌하단)
+    const hx = STORY_POS.x - 24;
+    const hy = STORY_POS.y;
+    g.fillStyle(0x8a5a44, 1);
+    g.fillRect(hx, hy - 22, 48, 34); // 몸체
+    g.fillStyle(0xd9534f, 1);
+    g.fillRect(hx - 6, hy - 36, 60, 14); // 지붕
+    g.fillStyle(0x5a3a26, 1);
+    g.fillRect(hx + 18, hy - 4, 12, 16); // 문
+    g.fillStyle(0x9adcf5, 1);
+    g.fillRect(hx + 6, hy - 14, 8, 8); // 창
+    this.add
+      .text(STORY_POS.x, hy + 22, "📖 스토리 존", {
+        fontSize: "11px",
+        fontStyle: "bold",
+        color: "#5a3a26",
+      })
+      .setOrigin(0.5)
+      .setDepth(1);
+
     // 하단 가로수
     for (let tx = 60; tx < 900; tx += 150) {
       g.fillStyle(0x7a5230, 1);
@@ -721,35 +923,85 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
-  private selectUnit(unit: Unit | null): void {
-    if (this.selected) this.selected.setSelected(false);
-    this.selected = unit;
-    this.selG.clear();
+  private selectUnits(units: Unit[]): void {
+    for (const u of this.selectedUnits) u.setSelected(false);
+    this.selectedUnits = units;
+    for (const u of units) u.setSelected(true);
 
-    if (!unit) {
+    if (units.length === 0) {
       this.hud.unitInfo(null, 0);
       return;
     }
-
-    unit.setSelected(true);
-    const x = GRID.x + unit.col * GRID.cell + 5;
-    const y = GRID.y + unit.row * GRID.cell + 5;
-    this.selG.lineStyle(3, GRADE_COLOR[unit.def.grade], 0.95);
-    this.selG.strokeRoundedRect(x, y, GRID.cell - 10, GRID.cell - 10, 8);
-
+    if (units.length > 1) {
+      this.hud.unitInfoMulti(units.length);
+      return;
+    }
     // 전설: 종류 무관 2기 → 초월 / 안흔함~희귀함: 동급 3기 → 상위 합성
+    const unit = units[0];
     const sameCount = this.units.filter(
       (u) => u.def.grade === unit.def.grade
     ).length;
-    this.hud.unitInfo(unit.def, sameCount);
+    // 흔함 유닛이면 이 유닛이 재료로 들어가는 조합법을 함께 표시 (가능한 것 우선)
+    const related =
+      unit.def.grade === "common"
+        ? this.comboRows()
+            .filter((r) => r.key.split("+").includes(unit.def.id))
+            .sort((a, b) => Number(b.ok) - Number(a.ok))
+        : [];
+    this.hud.unitInfo(unit.def, sameCount, related);
   }
 
-  private unitAt(col: number, row: number): Unit | undefined {
-    return this.units.find((u) => u.col === col && u.row === row);
+  /** 우클릭 이동 명령 — 적군 경로(트랙) 안쪽으로만 이동 가능 */
+  private commandMove(tx: number, ty: number): void {
+    const n = this.selectedUnits.length;
+    if (n === 0) return;
+
+    // 📖 오두막(스토리 존 입구) 우클릭 = 첫 유닛 파견 이동
+    if (Math.hypot(tx - STORY_POS.x, ty - STORY_POS.y) < 44) {
+      if (this.storyUnit) {
+        this.hud.message("이미 파견 중 — 회수 후 다시 보내세요");
+        return;
+      }
+      const u = this.selectedUnits[0];
+      this.pendingDispatch = u;
+      u.commandTo(STORY_POS.x, STORY_POS.y);
+      this.hud.message(`${u.def.name} 파견 이동 중…`);
+      return;
+    }
+    // 다른 곳으로 이동 명령하면 파견 예약 취소
+    if (this.pendingDispatch && this.selectedUnits.includes(this.pendingDispatch)) {
+      this.pendingDispatch = null;
+    }
+
+    const cx = this.clampX(tx);
+    const cy = this.clampY(ty);
+    // 목적지 마커 — 이동 명령 피드백
+    const marker = this.add.circle(cx, cy, 7, 0x8fff8f, 0.9).setDepth(4);
+    this.tweens.add({
+      targets: marker,
+      scale: 2.2,
+      alpha: 0,
+      duration: 350,
+      onComplete: () => marker.destroy(),
+    });
+    const rows = Math.ceil(n / 3);
+    this.selectedUnits.forEach((u, i) => {
+      const ox = ((i % 3) - 1) * 52;
+      const oy = (Math.floor(i / 3) - (rows - 1) / 2) * 52;
+      u.commandTo(this.clampX(cx + ox), this.clampY(cy + oy));
+    });
   }
 
-  private addUnit(def: ReturnType<typeof randomUnitOfGrade>, col: number, row: number): Unit {
-    const unit = new Unit(this, def, col, row, (u) => this.selectUnit(u));
+  private clampX(x: number): number {
+    return Phaser.Math.Clamp(x, TRACK.left + 52, TRACK.right - 52);
+  }
+
+  private clampY(y: number): number {
+    return Phaser.Math.Clamp(y, TRACK.top + 52, TRACK.bottom - 52);
+  }
+
+  private addUnit(def: UnitDef, x: number, y: number): Unit {
+    const unit = new Unit(this, def, x, y, (u) => this.selectUnits([u]));
     this.units.push(unit);
     return unit;
   }
@@ -757,7 +1009,9 @@ export class GameScene extends Phaser.Scene {
   private removeUnit(unit: Unit): void {
     const i = this.units.indexOf(unit);
     if (i >= 0) this.units.splice(i, 1);
-    if (this.selected === unit) this.selected = null;
+    const si = this.selectedUnits.indexOf(unit);
+    if (si >= 0) this.selectedUnits.splice(si, 1);
+    if (this.pendingDispatch === unit) this.pendingDispatch = null;
     unit.destroy();
   }
 
@@ -766,14 +1020,24 @@ export class GameScene extends Phaser.Scene {
     this.over = true;
     this.paused = false;
     this.wave.stop();
-    this.selectUnit(null);
+    this.selectUnits([]);
+    // 스토리 진행도는 판이 끝나도 유지
+    if (this.storyLoaded) {
+      void saveStory({ chapter: this.storyChapterNo, hp: this.storyHp });
+    }
     if (win) sfx.win();
     else sfx.lose();
 
     const round = this.wave.round;
     void updateRecords(win, round).then((records) => {
       const desc = `${reason}\n라운드 ${round} · 처치 ${this.kills} · 최고 라운드 ${records.bestRound}`;
-      this.hud.result(win, desc, () => this.scene.restart({ deck: this.deck }));
+      this.hud.result(
+        win,
+        desc,
+        () =>
+          this.scene.restart({ deck: this.deck, difficulty: this.difficulty }),
+        () => this.scene.start("title")
+      );
     });
   }
 }

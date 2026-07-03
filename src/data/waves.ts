@@ -11,6 +11,33 @@ export interface MobStats {
   golden?: boolean; // 황금 비둘기 — 보너스 몹 (캡/데스 미적용, 1바퀴 후 소멸)
 }
 
+// ---------- 난이도 ----------
+// 시뮬 봇 승률 = 초보자 기준. 숙련자는 ~1.5배 잘하므로 3단계로 나눈다.
+export type Difficulty = "easy" | "normal" | "hard";
+
+export const DIFFICULTY_DEFS: Record<
+  Difficulty,
+  { name: string; hpMul: number; desc: string }
+> = {
+  easy: { name: "쉬움", hpMul: 0.85, desc: "몹 체력 -15% · 입문용" },
+  normal: { name: "보통", hpMul: 1.0, desc: "표준 밸런스" },
+  hard: { name: "어려움", hpMul: 1.2, desc: "몹 체력 +20% · 숙련자용" },
+};
+
+let currentDifficulty: Difficulty = "normal";
+
+export function setDifficulty(d: Difficulty): void {
+  currentDifficulty = d;
+}
+
+export function getDifficulty(): Difficulty {
+  return currentDifficulty;
+}
+
+function diffMul(): number {
+  return DIFFICULTY_DEFS[currentDifficulty].hpMul;
+}
+
 export function mobArmor(round: number): number {
   return Math.floor(round * 2.2);
 }
@@ -72,7 +99,7 @@ function mobKind(round: number): { kind: MobKind; color: number; tier: number } 
 export function mobStats(round: number): MobStats {
   const { kind, color, tier } = mobKind(round);
   return {
-    hp: Math.max(1, Math.round(baseHp(round) * kind.hpMul)),
+    hp: Math.max(1, Math.round(baseHp(round) * kind.hpMul * diffMul())),
     speed: baseSpeed(round) * kind.speedMul,
     gold: 2 + Math.floor(round / 5), // 3기 합성 경제에 맞춰 상향 (v3.2)
     armor: Math.floor(mobArmor(round) * kind.armorMul),
@@ -87,7 +114,7 @@ export function mobStats(round: number): MobStats {
 /** ✨ 황금 비둘기 — 잡으면 골드 ×10, 놓쳐도 벌 없음 */
 export function goldenStats(round: number): MobStats {
   return {
-    hp: Math.max(1, Math.round(baseHp(round) * 0.5)),
+    hp: Math.max(1, Math.round(baseHp(round) * 0.5 * diffMul())),
     speed: baseSpeed(round) * 1.8,
     gold: (2 + Math.floor(round / 5)) * 10,
     armor: 0,
@@ -125,7 +152,7 @@ export function bossStats(round: number): MobStats {
   };
   // 계열 배율의 영향을 받지 않도록 기본 공식 사용
   return {
-    hp: Math.round(baseHp(round) * def.hpMul),
+    hp: Math.round(baseHp(round) * def.hpMul * diffMul()),
     speed: def.speed,
     gold: 20 + round,
     armor: Math.floor(mobArmor(round) * def.armorMul),

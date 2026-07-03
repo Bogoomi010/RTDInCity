@@ -79,6 +79,62 @@
         background: #3a4152;
         cursor: default;
       }
+      button.big.alt {
+        background: #3a4152;
+      }
+      button.big.alt:hover {
+        background: #4a5468;
+      }
+      button.big.glow {
+        animation: bookglow 1.3s ease-in-out infinite;
+      }
+      @keyframes bookglow {
+        0%, 100% { box-shadow: 0 0 0 0 rgba(255, 209, 102, 0); }
+        50% { box-shadow: 0 0 14px 2px rgba(255, 209, 102, 0.65); }
+      }
+      #unitInfo .hint {
+        margin-top: 8px;
+        color: #6b7382;
+        font-size: 12px;
+        line-height: 1.6;
+      }
+      #unitInfo .crowtitle {
+        margin-top: 8px;
+        font-weight: 700;
+        color: #ffd166;
+        font-size: 12px;
+      }
+      #unitInfo .crows {
+        max-height: 190px;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        margin-top: 4px;
+      }
+      #unitInfo .crow {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 8px;
+        padding: 5px 8px;
+        background: #141926;
+        border: 1px solid #3a4152;
+        border-radius: 7px;
+        color: #8f96a3;
+        cursor: default;
+        text-align: left;
+        font-size: 11.5px;
+      }
+      #unitInfo .crow.ok {
+        color: #e8eaed;
+        border-color: #ffd166;
+        cursor: pointer;
+        animation: bookglow 1.3s ease-in-out infinite;
+      }
+      #unitInfo .crow.ok:hover {
+        background: #23282f;
+      }
       #unitInfo {
         background: rgba(255, 255, 255, 0.06);
         border-radius: 10px;
@@ -89,6 +145,46 @@
       }
       #unitInfo .grade {
         font-weight: 700;
+      }
+      #story {
+        background: rgba(255, 255, 255, 0.06);
+        border-radius: 10px;
+        padding: 10px 12px;
+        font-size: 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+      #story .rtitle {
+        font-weight: 700;
+        font-size: 13px;
+        color: #d9a05a;
+      }
+      #story .stbar {
+        height: 8px;
+        background: #141926;
+        border-radius: 4px;
+        overflow: hidden;
+      }
+      #story #st-fill {
+        height: 100%;
+        width: 100%;
+        background: #d9534f;
+        transition: width 0.2s linear;
+      }
+      #story .rbtn {
+        padding: 5px 10px;
+        font-size: 12px;
+        font-weight: 700;
+        color: #fff;
+        background: #6b4e2e;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        align-self: flex-start;
+      }
+      #story .rbtn:hover {
+        background: #8a6a42;
       }
       #recipes,
       #combos,
@@ -461,6 +557,29 @@
       #deck .dkinfo b {
         color: #ffd166;
         font-size: 15px;
+      }
+      #deck .dkdiff {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      #deck .dkdbtn {
+        padding: 7px 16px;
+        border: 2px solid #3a4152;
+        border-radius: 8px;
+        background: #141926;
+        color: #8f96a3;
+        font-weight: 700;
+        font-size: 13px;
+        cursor: pointer;
+      }
+      #deck .dkdbtn.on {
+        border-color: #ffd166;
+        color: #ffd166;
+      }
+      #deck .dkddesc {
+        font-size: 12px;
+        color: #8f96a3;
       }
       #deck .dkdesc {
         color: #8f96a3;

@@ -1,7 +1,9 @@
 import Phaser from "phaser";
 import { GRADE_COLOR, type DmgType, type UnitDef } from "../data/units";
-import { cellCenter, PHASE_BUFF } from "../data/config";
+import { PHASE_BUFF } from "../data/config";
 import type { Mob } from "./Mob";
+
+const MOVE_SPEED = 150; // px/s — RTS식 이동 속도
 
 export interface CombatCtx {
   now: number;
@@ -15,24 +17,21 @@ export interface CombatCtx {
 
 export class Unit extends Phaser.GameObjects.Container {
   def: UnitDef;
-  col: number;
-  row: number;
 
   private cd = 0;
   private ring: Phaser.GameObjects.Graphics;
+  private tx: number | null = null; // 이동 목표 (null = 정지)
+  private ty = 0;
 
   constructor(
     scene: Phaser.Scene,
     def: UnitDef,
-    col: number,
-    row: number,
+    x: number,
+    y: number,
     onClick: (unit: Unit) => void
   ) {
-    const c = cellCenter(col, row);
-    super(scene, c.x, c.y);
+    super(scene, x, y);
     this.def = def;
-    this.col = col;
-    this.row = row;
 
     const body = scene.add
       .image(0, 0, "unit")
@@ -74,14 +73,31 @@ export class Unit extends Phaser.GameObjects.Container {
     this.ring.setVisible(sel);
   }
 
-  moveToCell(col: number, row: number): void {
-    this.col = col;
-    this.row = row;
-    const c = cellCenter(col, row);
-    this.setPosition(c.x, c.y);
+  /** RTS식 이동 명령 — update에서 목표까지 걸어간다 (Container.moveTo와 이름 충돌 회피) */
+  commandTo(x: number, y: number): void {
+    this.tx = x;
+    this.ty = y;
+  }
+
+  get moving(): boolean {
+    return this.tx !== null;
   }
 
   update(ctx: CombatCtx, deltaMs: number): void {
+    // 이동
+    if (this.tx !== null) {
+      const dx = this.tx - this.x;
+      const dy = this.ty - this.y;
+      const dist = Math.hypot(dx, dy);
+      const step = (MOVE_SPEED * deltaMs) / 1000;
+      if (dist <= step) {
+        this.setPosition(this.tx, this.ty);
+        this.tx = null;
+      } else {
+        this.setPosition(this.x + (dx / dist) * step, this.y + (dy / dist) * step);
+      }
+    }
+
     this.cd -= deltaMs;
     if (this.cd > 0) return;
 

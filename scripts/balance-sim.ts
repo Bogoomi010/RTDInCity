@@ -20,6 +20,9 @@ import {
   bossStats,
   armorReduction,
   roundClearBonus,
+  setDifficulty,
+  DIFFICULTY_DEFS,
+  type Difficulty,
 } from "../src/data/waves.ts";
 import {
   comboResult,
@@ -299,26 +302,29 @@ function simulate(): Result {
   return { win: true, round: ROUND_MAX, cause: "-" };
 }
 
-// ---------- 실행 ----------
+// ---------- 실행 — 난이도 3종 일괄 검증 ----------
 const N = 400;
-const results: Result[] = [];
-for (let i = 0; i < N; i++) results.push(simulate());
+for (const d of Object.keys(DIFFICULTY_DEFS) as Difficulty[]) {
+  setDifficulty(d);
+  const results: Result[] = [];
+  for (let i = 0; i < N; i++) results.push(simulate());
 
-const wins = results.filter((r) => r.win).length;
-const loses = results.filter((r) => !r.win);
-const byCause: Record<string, number> = {};
-const byRound: Record<number, number> = {};
-for (const l of loses) {
-  byCause[l.cause] = (byCause[l.cause] ?? 0) + 1;
-  byRound[l.round] = (byRound[l.round] ?? 0) + 1;
+  const wins = results.filter((r) => r.win).length;
+  const loses = results.filter((r) => !r.win);
+  const byCause: Record<string, number> = {};
+  const byRound: Record<number, number> = {};
+  for (const l of loses) {
+    byCause[l.cause] = (byCause[l.cause] ?? 0) + 1;
+    byRound[l.round] = (byRound[l.round] ?? 0) + 1;
+  }
+  console.log(`\n=== ${DIFFICULTY_DEFS[d].name} (몹 HP ×${DIFFICULTY_DEFS[d].hpMul}) — ${N}판 ===`);
+  console.log(`승률: ${((wins / N) * 100).toFixed(1)}%`);
+  console.log(`패배 원인:`, byCause);
+  console.log(
+    `패배 라운드 분포:`,
+    Object.entries(byRound)
+      .sort((a, b) => Number(a[0]) - Number(b[0]))
+      .map(([r, c]) => `${r}R:${c}`)
+      .join(" ")
+  );
 }
-console.log(`시뮬레이션 ${N}판`);
-console.log(`승률: ${((wins / N) * 100).toFixed(1)}%`);
-console.log(`패배 원인:`, byCause);
-console.log(
-  `패배 라운드 분포:`,
-  Object.entries(byRound)
-    .sort((a, b) => Number(a[0]) - Number(b[0]))
-    .map(([r, c]) => `${r}R:${c}`)
-    .join(" ")
-);

@@ -67,6 +67,21 @@ export async function addDex(key: string): Promise<void> {
   }
 }
 
+// ---------- 스토리 존 (챕터·보스 HP — 판을 넘어 유지) ----------
+
+export interface StoryState {
+  chapter: number;
+  hp: number; // 남은 보스 HP
+}
+
+export async function loadStory(): Promise<StoryState | null> {
+  return await get<StoryState>("story");
+}
+
+export async function saveStory(s: StoryState): Promise<void> {
+  await set("story", s);
+}
+
 // ---------- 설정 ----------
 
 export interface Settings {

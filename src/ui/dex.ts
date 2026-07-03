@@ -18,6 +18,9 @@ export function openDex(): void {
   `;
   root.appendChild(el);
   el.querySelector("#h-dexclose")!.addEventListener("click", () => el.remove());
+  el.addEventListener("click", (e) => {
+    if (e.target === el) el.remove(); // 배경 클릭 = 닫기
+  });
 
   void loadDex().then((found) => {
     const dex = new Set(found);

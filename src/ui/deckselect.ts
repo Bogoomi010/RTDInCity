@@ -1,5 +1,6 @@
 import { HIDDEN_IDS, NORMAL_COMMON_IDS } from "../data/combos";
 import { UNIT_BY_ID } from "../data/units";
+import { DIFFICULTY_DEFS, type Difficulty } from "../data/waves";
 
 /**
  * 캐릭터 선택 화면 느낌의 출격 덱 선택.
@@ -56,12 +57,15 @@ function shapeSvg(id: string, size: number): string {
   }
 }
 
-export function openDeckSelect(onStart: (deck: string[]) => void): void {
+export function openDeckSelect(
+  onStart: (deck: string[], difficulty: Difficulty) => void
+): void {
   document.getElementById("deck")?.remove(); // 중복 생성 가드
   const root = document.getElementById("ui")!;
   const el = document.createElement("div");
   el.id = "deck";
   const picked: string[] = []; // 선택 순서 유지 → 파티 슬롯에 순서대로
+  let difficulty: Difficulty = "normal";
 
   el.innerHTML = `
     <div class="dkpanel">
@@ -82,6 +86,19 @@ export function openDeckSelect(onStart: (deck: string[]) => void): void {
       <div class="dkbottom">
         <div class="dkparty" id="dk-party"></div>
         <div class="dkinfo" id="dk-info">대원을 클릭해 파티에 넣으세요</div>
+      </div>
+      <div class="dkdiff">
+        ${(Object.keys(DIFFICULTY_DEFS) as Difficulty[])
+          .map(
+            (d) => `
+              <button class="dkdbtn ${d === "normal" ? "on" : ""}" data-diff="${d}"
+                title="${DIFFICULTY_DEFS[d].desc}">
+                ${DIFFICULTY_DEFS[d].name}
+              </button>
+            `
+          )
+          .join("")}
+        <span class="dkddesc" id="dk-ddesc">${DIFFICULTY_DEFS.normal.desc}</span>
       </div>
       <button class="big" id="dk-start" disabled>대원 3명을 선택하세요</button>
     </div>
@@ -145,10 +162,19 @@ export function openDeckSelect(onStart: (deck: string[]) => void): void {
     });
   });
 
+  el.querySelectorAll<HTMLButtonElement>(".dkdbtn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      difficulty = btn.dataset.diff as Difficulty;
+      el.querySelectorAll(".dkdbtn").forEach((b) => b.classList.remove("on"));
+      btn.classList.add("on");
+      el.querySelector("#dk-ddesc")!.textContent = DIFFICULTY_DEFS[difficulty].desc;
+    });
+  });
+
   el.querySelector("#dk-close")!.addEventListener("click", () => el.remove());
   startBtn.addEventListener("click", () => {
     el.remove();
-    onStart([...picked]);
+    onStart([...picked], difficulty);
   });
 
   renderParty();

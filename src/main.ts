@@ -14,6 +14,9 @@ const game = new Phaser.Game({
   height: GAME_H,
   backgroundColor: "#12151c",
   pixelArt: true, // 도트 감성 — 확대 시 네모 픽셀 유지 (텍스처 스무딩 끔)
+  // DOM 오버레이(덱 선택·도감 등) 위의 클릭이 window 이벤트로 Phaser 버튼까지
+  // 뚫고 들어가는 것을 차단 — 캔버스에서 시작된 입력만 처리한다
+  input: { windowEvents: false },
   scene: [BootScene, TitleScene, GameScene],
 });
 

@@ -264,7 +264,9 @@ export class TitleScene extends Phaser.Scene {
   private drawMenu(): void {
     this.menuButton(388, "▶ 출격", true, () => {
       sfx.init();
-      openDeckSelect((deck) => this.scene.start("game", { deck }));
+      openDeckSelect((deck, difficulty) =>
+        this.scene.start("game", { deck, difficulty })
+      );
     });
     this.menuButton(456, "도감", false, () => openDex());
     this.menuButton(516, "설정", false, () => settingsUI.open());
