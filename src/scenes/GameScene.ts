@@ -605,14 +605,16 @@ export class GameScene extends Phaser.Scene {
           ok = false;
           break;
         }
+      const def = comboResult(ids);
       return {
         key,
-        result: this.dex.has(key) ? comboResult(ids).name : null,
+        result: this.dex.has(key) ? def.name : null,
+        grade: def.grade,
         mats: ids.map((id) => UNIT_BY_ID[id].name),
         ok,
       };
     });
-    this.hud.combos(comboRows);
+    this.hud.comboBook(comboRows);
     this.hud.tickets(this.tickets);
   }
 

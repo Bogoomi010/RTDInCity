@@ -163,6 +163,79 @@
       #picker .rbtn:hover {
         background: #3d4b63;
       }
+      #book {
+        position: absolute;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.7);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        pointer-events: auto;
+        z-index: 42;
+        color: #e8eaed;
+      }
+      #book .dpanel {
+        width: 620px;
+        max-height: 84%;
+        background: #1b2130;
+        border: 2px solid #3a4152;
+        border-radius: 14px;
+        padding: 22px 26px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      #book h2 {
+        margin: 0;
+        font-size: 20px;
+      }
+      #book .btabs {
+        display: flex;
+        gap: 6px;
+      }
+      #book .btab {
+        padding: 7px 14px;
+        border: none;
+        border-radius: 8px;
+        background: #141926;
+        color: #8f96a3;
+        font-weight: 700;
+        font-size: 13px;
+        cursor: pointer;
+      }
+      #book .btab.on {
+        background: #2b3450;
+        color: #fff;
+      }
+      #blist {
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        font-size: 13px;
+      }
+      #book .brow {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        padding: 9px 14px;
+        background: #141926;
+        border: 1px solid #3a4152;
+        border-radius: 8px;
+        color: #b8bcc4;
+        cursor: pointer;
+        text-align: left;
+        font-size: 13px;
+      }
+      #book .brow:hover:not(:disabled) {
+        border-color: #ffd166;
+        color: #fff;
+      }
+      #book .brow:disabled {
+        opacity: 0.45;
+        cursor: default;
+      }
       #recipes .rrow,
       #combos .rrow {
         display: flex;

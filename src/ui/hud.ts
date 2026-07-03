@@ -13,9 +13,13 @@ import { settingsUI } from "./settings";
 export interface ComboRow {
   key: string;
   result: string | null; // 미발견이면 null → "???"
+  grade: Grade; // 결과 등급 (= 시트 분류)
   mats: string[];
   ok: boolean; // 필드에 재료가 모두 있는가
 }
+
+/** 조합법 책의 시트 순서 */
+const BOOK_TABS: Grade[] = ["uncommon", "special", "rare", "legendary"];
 
 export interface HudSnapshot {
   round: number;
@@ -62,9 +66,17 @@ export class Hud {
         <button class="big" id="h-gacha">유닛 뽑기 — ${GACHA_COST}G</button>
         <div id="unitInfo"></div>
         <div id="tickets"></div>
-        <div id="combos"></div>
+        <button class="big" id="h-book">📖 조합법</button>
       </div>
       <div id="picker"></div>
+      <div id="book">
+        <div class="dpanel">
+          <h2>📖 조합법</h2>
+          <div class="btabs" id="btabs"></div>
+          <div id="blist"></div>
+          <button class="big" id="h-bookclose">닫기</button>
+        </div>
+      </div>
       <div id="msg"></div>
       <div id="pause">
         <button class="playbtn" id="h-resume" title="다시 시작">▶</button>
@@ -84,9 +96,11 @@ export class Hud {
       this.els[id] = document.getElementById(id)!;
     }
     this.els["msg"] = document.getElementById("msg")!;
-    this.els["combos"] = document.getElementById("combos")!;
     this.els["tickets"] = document.getElementById("tickets")!;
     this.els["picker"] = document.getElementById("picker")!;
+    this.els["book"] = document.getElementById("book")!;
+    this.els["btabs"] = document.getElementById("btabs")!;
+    this.els["blist"] = document.getElementById("blist")!;
     this.els["cards"] = document.getElementById("cards")!;
     this.els["result"] = document.getElementById("result")!;
     this.els["unitInfo"] = document.getElementById("unitInfo")!;
@@ -100,6 +114,13 @@ export class Hud {
     };
     pauseBtn.addEventListener("click", togglePause);
     document.getElementById("h-resume")!.addEventListener("click", togglePause);
+    document.getElementById("h-book")!.addEventListener("click", () => {
+      this.renderBook();
+      this.els["book"].style.display = "flex";
+    });
+    document.getElementById("h-bookclose")!.addEventListener("click", () => {
+      this.els["book"].style.display = "none";
+    });
     const speedBtn = document.getElementById("h-speed")!;
     speedBtn.addEventListener("click", () => {
       speedBtn.textContent = `x${onSpeed()}`;
@@ -249,34 +270,55 @@ export class Hud {
     });
   }
 
-  // ---------- 3기 조합 ----------
+  // ---------- 📖 조합법 책 ----------
 
-  /** 패널: 지금 만들 수 있는 조합만 표시 */
-  combos(rows: ComboRow[]): void {
-    const el = this.els["combos"];
-    const craftable = rows.filter((r) => r.ok);
-    el.innerHTML = `
-      <div class="rtitle">3기 조합</div>
-      ${
-        craftable.length === 0
-          ? `<div style="color:#8f96a3">흔함 유닛 3기가 모이면 표시됩니다</div>`
-          : craftable
-              .map(
-                (r) => `
-                  <div class="rrow">
-                    <button class="rbtn" data-combo="${r.key}">
-                      ${r.result ?? "??? (미발견)"}
-                    </button>
-                    <div>${r.mats.join(" + ")}</div>
-                  </div>
-                `
-              )
-              .join("")
-      }
-    `;
-    el.querySelectorAll<HTMLButtonElement>("[data-combo]").forEach((btn) => {
-      btn.addEventListener("click", () => this.onCombo(btn.dataset.combo!));
-    });
+  private bookRows: ComboRow[] = [];
+  private bookTab: Grade = "uncommon";
+
+  /** 조합 데이터 갱신 — 책이 열려 있으면 즉시 다시 그림 */
+  comboBook(rows: ComboRow[]): void {
+    this.bookRows = rows;
+    const craftable = rows.filter((r) => r.ok).length;
+    document.getElementById("h-book")!.textContent =
+      craftable > 0 ? `📖 조합법 (지금 가능 ${craftable})` : "📖 조합법";
+    if (this.els["book"].style.display === "flex") this.renderBook();
+  }
+
+  /** 등급별 시트에 "A + B + C = 결과"를 나열. 재료가 모이면 행이 활성화 */
+  private renderBook(): void {
+    this.els["btabs"].innerHTML = BOOK_TABS.map(
+      (g) => `
+        <button class="btab ${g === this.bookTab ? "on" : ""}" data-tab="${g}"
+          style="${g === this.bookTab ? `color:${GRADE_COLOR_CSS[g]}` : ""}">
+          ${GRADE_NAME[g]}
+        </button>
+      `
+    ).join("");
+    this.els["btabs"]
+      .querySelectorAll<HTMLButtonElement>("[data-tab]")
+      .forEach((btn) => {
+        btn.addEventListener("click", () => {
+          this.bookTab = btn.dataset.tab as Grade;
+          this.renderBook();
+        });
+      });
+
+    const rows = this.bookRows.filter((r) => r.grade === this.bookTab);
+    this.els["blist"].innerHTML = rows
+      .map(
+        (r) => `
+          <button class="brow" data-combo="${r.key}" ${r.ok ? "" : "disabled"}>
+            <span>${r.mats.join(" + ")}</span>
+            <b style="color:${GRADE_COLOR_CSS[this.bookTab]}">= ${r.result ?? "???"}</b>
+          </button>
+        `
+      )
+      .join("");
+    this.els["blist"]
+      .querySelectorAll<HTMLButtonElement>("[data-combo]")
+      .forEach((btn) => {
+        btn.addEventListener("click", () => this.onCombo(btn.dataset.combo!));
+      });
   }
 
   offerCards(cards: CardDef[], onPick: (id: string) => void): void {
