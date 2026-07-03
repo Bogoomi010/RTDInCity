@@ -3,6 +3,8 @@ import {
   cellFromPoint,
   DEATH_START,
   GACHA_COST,
+  GAME_H,
+  GAME_W,
   GRID,
   MOB_CAP,
   PHASE_SEC,
@@ -86,6 +88,7 @@ export class GameScene extends Phaser.Scene {
 
   private hpG!: Phaser.GameObjects.Graphics;
   private selG!: Phaser.GameObjects.Graphics;
+  private nightO!: Phaser.GameObjects.Rectangle; // 밤 오버레이 (알파로 낮/밤 연출)
 
   constructor() {
     super("game");
@@ -124,6 +127,10 @@ export class GameScene extends Phaser.Scene {
     this.drawBoard();
     this.hpG = this.add.graphics().setDepth(6);
     this.selG = this.add.graphics().setDepth(3);
+    this.nightO = this.add
+      .rectangle(GAME_W / 2, GAME_H / 2, GAME_W, GAME_H, 0x0b1026, 1)
+      .setAlpha(0)
+      .setDepth(40);
 
     this.hud = new Hud(
       () => this.gacha(),
@@ -186,7 +193,11 @@ export class GameScene extends Phaser.Scene {
     const day = this.isDay;
     if (day !== this.wasDay) {
       this.wasDay = day;
-      this.cameras.main.setBackgroundColor(day ? "#12151c" : "#0b0d1a");
+      this.tweens.add({
+        targets: this.nightO,
+        alpha: day ? 0 : 0.42,
+        duration: 900,
+      });
       this.hud.message(
         day ? "☀ 아침이 밝았다 — 낮 유닛 강화!" : "🌙 밤이 찾아왔다 — 밤 유닛 강화!"
       );
@@ -620,31 +631,78 @@ export class GameScene extends Phaser.Scene {
 
   // ---------- 표시 / 상태 ----------
 
+  /** 타이틀과 같은 픽셀 도시 스타일 보드 — 전부 사각형만으로 그린다 */
   private drawBoard(): void {
-    this.cameras.main.setBackgroundColor("#12151c");
+    this.cameras.main.setBackgroundColor("#12151c"); // 상단바 뒤 배경
 
     const g = this.add.graphics().setDepth(0);
-    const path = [
-      new Phaser.Geom.Point(TRACK.left, TRACK.top),
-      new Phaser.Geom.Point(TRACK.right, TRACK.top),
-      new Phaser.Geom.Point(TRACK.right, TRACK.bottom),
-      new Phaser.Geom.Point(TRACK.left, TRACK.bottom),
-    ];
+    const P = 4;
+    const L = TRACK.left;
+    const T = TRACK.top;
+    const W = TRACK.right - TRACK.left;
+    const H = TRACK.bottom - TRACK.top;
 
-    g.lineStyle(48, 0x2b303b, 1);
-    g.strokePoints(path, true, true);
-    g.lineStyle(4, 0x485063, 1);
-    g.strokePoints(path, true, true);
+    // 하늘 띠 + 미니 스카이라인 (상단바 아래)
+    g.fillStyle(0x58b4f0, 1);
+    g.fillRect(0, 52, GAME_W, 58);
+    let bx = 0;
+    while (bx < GAME_W) {
+      const bw = 40 + Math.random() * 70;
+      const bh = 20 + Math.random() * 34;
+      g.fillStyle(0xa8bdd2, 1);
+      g.fillRect(bx, 110 - bh, bw, bh);
+      bx += bw + P * 2;
+    }
 
+    // 보도 타일 바탕 (줄눈)
+    g.fillStyle(0xd7d2c8, 1);
+    g.fillRect(0, 110, GAME_W, GAME_H - 110);
+    g.fillStyle(0xc2bcb0, 1);
+    for (let x = 0; x < GAME_W; x += 32) g.fillRect(x, 110, 2, GAME_H - 110);
+    for (let y = 110; y < GAME_H; y += 32) g.fillRect(0, y, GAME_W, 2);
+
+    // 트랙 도로 — 연석(양쪽) + 아스팔트 링
+    g.fillStyle(0x565e6d, 1);
+    g.fillRect(L - 28, T - 28, W + 56, H + 56);
+    g.fillStyle(0x6f7787, 1);
+    g.fillRect(L - 24, T - 24, W + 48, H + 48);
+    g.fillStyle(0x565e6d, 1);
+    g.fillRect(L + 24, T + 24, W - 48, H - 48);
+    g.fillStyle(0xd7d2c8, 1);
+    g.fillRect(L + 28, T + 28, W - 56, H - 56);
+    // 중앙 점선 (경로 중심선)
+    g.fillStyle(0xf2f4f8, 1);
+    for (let x = L + 8; x < L + W - 16; x += 32) {
+      g.fillRect(x, T - 2, 16, P);
+      g.fillRect(x, T + H - 2, 16, P);
+    }
+    for (let y = T + 8; y < T + H - 16; y += 32) {
+      g.fillRect(L - 2, y, P, 16);
+      g.fillRect(L + W - 2, y, P, 16);
+    }
+
+    // 배치 그리드 — 잔디 블록
     for (let col = 0; col < GRID.cols; col++) {
       for (let row = 0; row < GRID.rows; row++) {
         const x = GRID.x + col * GRID.cell;
         const y = GRID.y + row * GRID.cell;
-        g.fillStyle(0x1c2430, 0.88);
-        g.fillRoundedRect(x + 5, y + 5, GRID.cell - 10, GRID.cell - 10, 8);
-        g.lineStyle(1, 0x536174, 0.85);
-        g.strokeRoundedRect(x + 5, y + 5, GRID.cell - 10, GRID.cell - 10, 8);
+        g.fillStyle(0x6e9e4f, 1);
+        g.fillRect(x + P, y + P, GRID.cell - P * 2, GRID.cell - P * 2);
+        g.fillStyle(0x8fbf6a, 1);
+        g.fillRect(x + P + 2, y + P + 2, GRID.cell - P * 2 - 4, GRID.cell - P * 2 - 4);
+        g.fillStyle(0xa5d284, 1);
+        g.fillRect(x + P + 2, y + P + 2, GRID.cell - P * 2 - 4, P);
       }
+    }
+
+    // 하단 가로수
+    for (let tx = 60; tx < 900; tx += 150) {
+      g.fillStyle(0x7a5230, 1);
+      g.fillRect(tx + P * 2, GAME_H - P * 8, P * 2, P * 6);
+      g.fillStyle(0x58b368, 1);
+      g.fillRect(tx, GAME_H - P * 13, P * 6, P * 6);
+      g.fillStyle(0x46945a, 1);
+      g.fillRect(tx + P, GAME_H - P * 7, P * 4, P);
     }
   }
 
