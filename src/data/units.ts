@@ -71,15 +71,31 @@ export interface UnitDef {
   stunMs?: number;
   shredAmt?: number; // 방어력 감소량
   shredMs?: number;
+  phase?: "day" | "night" | "both"; // 낮/밤 태그 — 해당 페이즈에 공격력 버프 (both = 항상)
+  hidden?: boolean; // 히든 유닛 — 뽑기 저확률 전용, 덱 선택 불가
   desc?: string;
 }
 
 export const UNITS: UnitDef[] = [
+  // ===== 흔함 추가 2종 — 3기 조합 재료 (계열 없음) =====
+  { id: "fl1", name: "전단지 알바", grade: "common", dmgType: "phys", atk: 5, range: 260, cooldown: 0.65, desc: "한 장만 받아주세요" },
+  { id: "fb1", name: "붕어빵 사장", grade: "common", dmgType: "phys", atk: 12, range: 230, cooldown: 1.3, desc: "팥 앙금 장전 완료" },
+
+  // ===== ✨ 히든 흔함 2종 — 뽑기 저확률 전용, 조합의 열쇠 =====
+  {
+    id: "hp1", name: "닭둘기", grade: "common", hidden: true, phase: "day", dmgType: "phys", atk: 4, range: 280, cooldown: 0.8,
+    splash: 40, desc: "도시의 낮의 주인 · 떼 쪼기 (반경 40)",
+  },
+  {
+    id: "hc1", name: "골목대장 냥이", grade: "common", hidden: true, phase: "night", dmgType: "phys", atk: 18, range: 310, cooldown: 1.5,
+    desc: "도시의 밤의 주인 · 암습",
+  },
+
   // ===== 🛵 배달 계열 — 고속 연타 물리 =====
   { id: "dv1", name: "배달 라이더", grade: "common", family: "delivery", dmgType: "phys", atk: 4, range: 250, cooldown: 0.5 },
   { id: "dv2", name: "슈퍼 라이더", grade: "uncommon", family: "delivery", dmgType: "phys", atk: 9, range: 260, cooldown: 0.45 },
   { id: "dv3", name: "배달 대행업체 사장님", grade: "special", family: "delivery", dmgType: "phys", atk: 25, range: 270, cooldown: 0.5 },
-  { id: "dv4", name: "물류센터 CEO", grade: "rare", family: "delivery", dmgType: "phys", atk: 70, range: 280, cooldown: 0.5 },
+  { id: "dv4", name: "물류센터 CEO", grade: "rare", family: "delivery", dmgType: "phys", atk: 70, range: 280, cooldown: 0.5, phase: "night", desc: "새벽 배송" },
   { id: "dv5", name: "대기업 비서실장", grade: "legendary", family: "delivery", dmgType: "phys", atk: 290, range: 300, cooldown: 0.5 },
 
   // ===== 👮 경찰 계열 — 밸런스 물리 =====
@@ -94,18 +110,18 @@ export const UNITS: UnitDef[] = [
   { id: "sn2", name: "사냥꾼", grade: "uncommon", family: "sniper", dmgType: "phys", atk: 34, range: 360, cooldown: 1.7 },
   { id: "sn3", name: "저격수", grade: "special", family: "sniper", dmgType: "phys", atk: 95, range: 400, cooldown: 1.8 },
   { id: "sn4", name: "레일건 저격수", grade: "rare", family: "sniper", dmgType: "phys", atk: 260, range: 480, cooldown: 1.9 },
-  { id: "sn5", name: "비밀요원 제로", grade: "legendary", family: "sniper", dmgType: "phys", atk: 950, range: 420, cooldown: 1.6 },
+  { id: "sn5", name: "비밀요원 제로", grade: "legendary", family: "sniper", dmgType: "phys", atk: 950, range: 420, cooldown: 1.6, phase: "night", desc: "밤의 저격수" },
 
   // ===== 🚁 드론 계열 — 마법 (방어 무시) =====
   { id: "dr1", name: "드론 동호회원", grade: "common", family: "drone", dmgType: "magic", atk: 8, range: 300, cooldown: 1.0 },
   { id: "dr2", name: "드론 조종사", grade: "uncommon", family: "drone", dmgType: "magic", atk: 18, range: 320, cooldown: 1.0 },
   {
     id: "dr3", name: "헬기 정찰대", grade: "special", family: "drone", dmgType: "magic", atk: 35, range: 330, cooldown: 1.2,
-    splash: 60, desc: "범위 피해 (반경 60)",
+    splash: 60, phase: "day", desc: "범위 피해 (반경 60) · 주간 정찰",
   },
   {
     id: "dr4", name: "사이버 요원", grade: "rare", family: "drone", dmgType: "magic", atk: 100, range: 320, cooldown: 1.0,
-    stunMs: 800, desc: "공격 시 대상 기절 0.8초",
+    stunMs: 800, phase: "night", desc: "공격 시 대상 기절 0.8초 · 심야 해킹",
   },
   {
     id: "dr5", name: "AI 관제센터장", grade: "legendary", family: "drone", dmgType: "magic", atk: 520, range: 380, cooldown: 1.0,
@@ -113,7 +129,7 @@ export const UNITS: UnitDef[] = [
   },
 
   // ===== 💥 철거 계열 — 방깎 지원 물리 =====
-  { id: "dm1", name: "공사장 인부", grade: "common", family: "demolition", dmgType: "phys", atk: 9, range: 240, cooldown: 1.1 },
+  { id: "dm1", name: "공사장 인부", grade: "common", family: "demolition", dmgType: "phys", atk: 9, range: 240, cooldown: 1.1, phase: "day", desc: "주간 공사" },
   {
     id: "dm2", name: "철거반원", grade: "uncommon", family: "demolition", dmgType: "phys", atk: 22, range: 250, cooldown: 1.1,
     shredAmt: 8, shredMs: 3000, desc: "공격 시 방어력 -8 (3초)",
@@ -124,7 +140,7 @@ export const UNITS: UnitDef[] = [
   },
   {
     id: "dm4", name: "국정원 요원", grade: "rare", family: "demolition", dmgType: "phys", atk: 210, range: 300, cooldown: 1.5,
-    shredAmt: 30, shredMs: 3000, desc: "공격 시 방어력 -30 (3초)",
+    shredAmt: 30, shredMs: 3000, phase: "night", desc: "공격 시 방어력 -30 (3초) · 심야 작전",
   },
   {
     id: "dm5", name: "재개발 조합장", grade: "legendary", family: "demolition", dmgType: "phys", atk: 560, range: 320, cooldown: 1.2,
@@ -135,7 +151,7 @@ export const UNITS: UnitDef[] = [
   { id: "tf1", name: "공원 관리인", grade: "common", family: "traffic", dmgType: "phys", atk: 13, range: 220, cooldown: 1.4 },
   {
     id: "tf2", name: "교통 경찰", grade: "uncommon", family: "traffic", dmgType: "magic", atk: 10, range: 290, cooldown: 1.0,
-    slowPct: 0.25, slowMs: 1200, desc: "공격 시 대상 감속 25%",
+    slowPct: 0.25, slowMs: 1200, phase: "day", desc: "공격 시 대상 감속 25% · 출퇴근 단속",
   },
   {
     id: "tf3", name: "진압 방패병", grade: "special", family: "traffic", dmgType: "phys", atk: 30, range: 250, cooldown: 1.0,
@@ -147,7 +163,7 @@ export const UNITS: UnitDef[] = [
   },
   {
     id: "tf5", name: "시장", grade: "legendary", family: "traffic", dmgType: "phys", atk: 550, range: 340, cooldown: 1.0,
-    splash: 100, desc: "범위 피해 (반경 100)",
+    splash: 100, phase: "day", desc: "범위 피해 (반경 100) · 낮의 도시",
   },
 
   // ===== ⚡ 초월 (5) — 조합 레시피 전용 =====
@@ -161,7 +177,7 @@ export const UNITS: UnitDef[] = [
   },
   {
     id: "t3", name: "고스트 프로토콜", grade: "transcendent", dmgType: "magic", atk: 3600, range: 420, cooldown: 1.0,
-    desc: "마법 단일 — 방어 무시",
+    phase: "night", desc: "마법 단일 — 방어 무시 · 밤의 유령",
   },
   {
     id: "t4", name: "썬더 콜러", grade: "transcendent", dmgType: "magic", atk: 1300, range: 380, cooldown: 0.9,
@@ -170,6 +186,10 @@ export const UNITS: UnitDef[] = [
   {
     id: "t5", name: "아마겟돈 드론", grade: "transcendent", dmgType: "phys", atk: 800, range: 400, cooldown: 0.8,
     splash: 70, shredAmt: 60, shredMs: 3000, desc: "광역 방어력 -60 (3초) 지원형",
+  },
+  {
+    id: "t6", name: "시티 로드", grade: "transcendent", dmgType: "phys", atk: 2600, range: 380, cooldown: 1.0,
+    splash: 110, desc: "도시 권력의 정점 — 물리 광역 (시장+경찰청장 페어)",
   },
 ];
 
@@ -185,9 +205,37 @@ export const GACHA_RATES: Array<[Grade, number]> = [
   ["legendary", 0.03],
 ];
 
-export function rollGrade(rand: () => number = Math.random): Grade {
+/** 라운드 구간별 뽑기 확률 — 초반엔 흔함 위주, 30라운드부터 기존 확률 */
+export function gachaRates(round: number): Array<[Grade, number]> {
+  if (round < 10)
+    return [
+      ["common", 0.98],
+      ["uncommon", 0.02],
+    ];
+  if (round <= 20)
+    return [
+      ["common", 0.9],
+      ["uncommon", 0.08],
+      ["special", 0.02],
+    ];
+  if (round < 30)
+    // 기획 미지정 구간(21~29) — 두 구간을 잇는 중간값
+    return [
+      ["common", 0.7],
+      ["uncommon", 0.17],
+      ["special", 0.08],
+      ["rare", 0.04],
+      ["legendary", 0.01],
+    ];
+  return GACHA_RATES;
+}
+
+export function rollGrade(
+  round: number,
+  rand: () => number = Math.random
+): Grade {
   let r = rand();
-  for (const [grade, p] of GACHA_RATES) {
+  for (const [grade, p] of gachaRates(round)) {
     if (r < p) return grade;
     r -= p;
   }
@@ -203,6 +251,7 @@ export function randomUnitOfGrade(
   grade: Grade,
   rand: () => number = Math.random
 ): UnitDef {
-  const pool = UNITS.filter((u) => u.grade === grade);
+  // 히든은 일반 풀에서 제외 — 뽑기의 히든 슬롯에서만 등장
+  const pool = UNITS.filter((u) => u.grade === grade && !u.hidden);
   return pool[Math.floor(rand() * pool.length)];
 }

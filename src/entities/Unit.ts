@@ -1,10 +1,11 @@
 import Phaser from "phaser";
 import { GRADE_COLOR, type DmgType, type UnitDef } from "../data/units";
-import { cellCenter } from "../data/config";
+import { cellCenter, PHASE_BUFF } from "../data/config";
 import type { Mob } from "./Mob";
 
 export interface CombatCtx {
   now: number;
+  isDay: boolean; // 낮/밤 페이즈 — 태그 유닛 버프 판정
   mobs: Mob[];
   cdMul: number; // 공격 주기 보정 (카드)
   rangeMul: number; // 사거리 보정 (카드)
@@ -103,6 +104,11 @@ export class Unit extends Phaser.GameObjects.Container {
     this.cd = this.def.cooldown * 1000 * ctx.cdMul;
     ctx.flash(this.x, this.y, target.x, target.y, GRADE_COLOR[this.def.grade]);
 
+    const p = this.def.phase;
+    const phaseBuffed =
+      p !== undefined && (p === "both" || (p === "day") === ctx.isDay);
+    const atk = phaseBuffed ? this.def.atk * PHASE_BUFF : this.def.atk;
+
     if (this.def.slowPct && this.def.slowMs) {
       target.applySlow(this.def.slowPct, this.def.slowMs, ctx.now);
     }
@@ -122,7 +128,7 @@ export class Unit extends Phaser.GameObjects.Container {
         if (this.def.shredAmt && this.def.shredMs) {
           m.applyShred(this.def.shredAmt, this.def.shredMs, ctx.now);
         }
-        ctx.damage(m, this.def.atk, this.def.dmgType);
+        ctx.damage(m, atk, this.def.dmgType);
       }
       return;
     }
@@ -130,6 +136,6 @@ export class Unit extends Phaser.GameObjects.Container {
     if (this.def.shredAmt && this.def.shredMs) {
       target.applyShred(this.def.shredAmt, this.def.shredMs, ctx.now);
     }
-    ctx.damage(target, this.def.atk, this.def.dmgType);
+    ctx.damage(target, atk, this.def.dmgType);
   }
 }

@@ -9,16 +9,23 @@ export class Mob extends Phaser.GameObjects.Image {
   readonly gold: number;
   readonly armor: number;
   readonly isBoss: boolean;
+  readonly splits: boolean; // 사망 시 분열
+  readonly golden: boolean; // 황금 비둘기 — 캡/데스 미적용, 1바퀴 후 소멸
   dead = false;
+  dist = 0; // 트랙 진행 거리(px) — 분열 자식 배치·황금 소멸 판정에 사용
 
-  private dist = 0;
   private slowPct = 0;
   private slowUntil = 0;
   private stunUntil = 0;
   private shredAmt = 0;
   private shredUntil = 0;
 
-  constructor(scene: Phaser.Scene, private loop: PathLoop, stats: MobStats) {
+  constructor(
+    scene: Phaser.Scene,
+    private loop: PathLoop,
+    stats: MobStats,
+    startDist = 0
+  ) {
     super(scene, 0, 0, stats.boss ? "boss" : "mob");
     this.hp = stats.hp;
     this.maxHp = stats.hp;
@@ -26,9 +33,13 @@ export class Mob extends Phaser.GameObjects.Image {
     this.gold = stats.gold;
     this.armor = stats.armor;
     this.isBoss = stats.boss;
-    this.setTint(stats.boss ? 0xff2e2e : 0xd9534f);
+    this.splits = stats.splits ?? false;
+    this.golden = stats.golden ?? false;
+    this.dist = startDist;
+    this.setTint(stats.color ?? (stats.boss ? 0xff2e2e : 0xd9534f));
+    if (stats.scale) this.setScale(stats.scale);
     this.setDepth(5);
-    const p = loop.posAt(0);
+    const p = loop.posAt(startDist);
     this.setPosition(p.x, p.y);
     scene.add.existing(this);
   }

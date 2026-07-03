@@ -18,6 +18,8 @@ export const MOBS_PER_ROUND = 20;
 export const SPAWN_INTERVAL = 0.8; // 초
 export const GACHA_COST = 20;
 export const START_GOLD = 100;
+export const PHASE_SEC = 180; // 낮/밤 지속 시간(초) — 게임 시계 기준(배속 연동)
+export const PHASE_BUFF = 1.25; // 태그 유닛의 해당 페이즈 공격력 배율
 
 export function cellCenter(col: number, row: number): { x: number; y: number } {
   return {

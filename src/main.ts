@@ -13,6 +13,7 @@ const game = new Phaser.Game({
   width: GAME_W,
   height: GAME_H,
   backgroundColor: "#12151c",
+  pixelArt: true, // 도트 감성 — 확대 시 네모 픽셀 유지 (텍스처 스무딩 끔)
   scene: [BootScene, TitleScene, GameScene],
 });
 

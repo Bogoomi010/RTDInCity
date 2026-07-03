@@ -7,12 +7,12 @@
  * 근사 모델: 유닛의 트랙 커버리지 비율 * DPS 로 라운드 처리량을 계산.
  */
 import {
-  UNITS,
-  GRADE_ORDER,
   rollGrade,
   randomUnitOfGrade,
   nextGrade,
   UNIT_BY_ID,
+  UNITS,
+  type Grade,
   type UnitDef,
 } from "../src/data/units.ts";
 import {
@@ -21,7 +21,11 @@ import {
   armorReduction,
   roundClearBonus,
 } from "../src/data/waves.ts";
-import { RECIPES } from "../src/data/recipes.ts";
+import {
+  comboResult,
+  HIDDEN_IDS,
+  NORMAL_COMMON_IDS,
+} from "../src/data/combos.ts";
 import { CARDS, CARD_ROUNDS, defaultMods, type Mods } from "../src/data/cards.ts";
 import {
   TRACK,
@@ -35,6 +39,7 @@ import {
   GACHA_COST,
   START_GOLD,
   DEATH_START,
+  PHASE_BUFF,
 } from "../src/data/config.ts";
 
 // ---------- 트랙 커버리지 ----------
@@ -102,58 +107,100 @@ function evalTeam(
     freeCells.splice(bi, 1);
     let d = (u.atk / (u.cooldown * mods.cdMul)) * mods.atkMul;
     d *= u.dmgType === "phys" ? mods.physMul * physFactor : mods.magicMul;
+    if (u.phase) d *= 1 + (PHASE_BUFF - 1) / 2; // 낮/밤 버프 — 평균 가동률 50%
     if (u.splash && !forBoss) d *= 2.0; // 라인이 뭉치면 스플래시 평균 2타겟
     dps += d * bc;
   }
   return dps;
 }
 
+// 🎟 보스 소환권 — 봇은 해당 등급 최고 DPS 유닛을 지정 소환
+const BOSS_TICKET: Record<number, Grade> = {
+  10: "uncommon",
+  20: "special",
+  30: "rare",
+  40: "legendary",
+};
+function bestOfGrade(g: Grade): UnitDef {
+  const pool = UNITS.filter((u) => u.grade === g && !u.hidden);
+  return pool.sort((a, b) => b.atk / b.cooldown - a.atk / a.cooldown)[0];
+}
+
 // ---------- 봇 구매/합성/조합 ----------
-function buyPhase(team: UnitDef[], state: { gold: number; mods: Mods }): void {
+/** 게임과 동일한 뽑기: 흔함은 덱 3종에서, 6%로 히든 */
+function rollUnitSim(deck: string[], round: number): UnitDef {
+  const grade = rollGrade(round);
+  if (grade !== "common") return randomUnitOfGrade(grade);
+  if (Math.random() < 0.06)
+    return UNIT_BY_ID[HIDDEN_IDS[Math.floor(Math.random() * HIDDEN_IDS.length)]];
+  return UNIT_BY_ID[deck[Math.floor(Math.random() * deck.length)]];
+}
+
+function buyPhase(
+  team: UnitDef[],
+  state: { gold: number; mods: Mods },
+  deck: string[],
+  round: number
+): void {
   const cost = () => Math.max(5, GACHA_COST - state.mods.gachaDiscount);
   let guard = 0;
   while (guard++ < 200) {
-    // 조합 우선
-    let crafted = false;
-    for (const r of RECIPES) {
+    // 전설 2기(종류 무관) → 랜덤 초월 (게임의 천장 시스템)
+    let transcended = false;
+    {
       const idx: number[] = [];
-      for (const matId of r.materials) {
-        const i = team.findIndex((u, k) => u.id === matId && !idx.includes(k));
-        if (i < 0) break;
-        idx.push(i);
+      for (let i = 0; i < team.length && idx.length < 2; i++) {
+        if (team[i].grade === "legendary") idx.push(i);
       }
-      if (idx.length === r.materials.length) {
+      if (idx.length === 2) {
         idx.sort((a, b) => b - a).forEach((i) => team.splice(i, 1));
-        team.push(UNIT_BY_ID[r.resultId]);
-        crafted = true;
+        team.push(randomUnitOfGrade("transcendent"));
+        transcended = true;
       }
     }
-    // 합성 (같은 id 2기 → 상위 랜덤)
-    let merged = false;
-    outer: for (let i = 0; i < team.length; i++) {
-      for (let j = i + 1; j < team.length; j++) {
-        if (team[i].id === team[j].id) {
-          const next = nextGrade(team[i].grade);
-          if (!next) continue;
-          // 전설 재료(레시피용)는 남긴다: 흔함/안흔함만 자동 합성
-          const gi = GRADE_ORDER.indexOf(team[i].grade);
-          if (gi >= 2 && Math.random() < 0.5) continue; // 특별함+는 절반 확률로 보존
-          team.splice(j, 1);
-          team.splice(i, 1);
-          team.push(randomUnitOfGrade(next));
-          merged = true;
-          break outer;
-        }
+    // 동급 3기 → 상위 등급 랜덤 (안흔함~희귀함)
+    let gradeMerged = false;
+    for (const g of ["uncommon", "special", "rare"] as const) {
+      const idx: number[] = [];
+      for (let i = 0; i < team.length && idx.length < 3; i++) {
+        if (team[i].grade === g) idx.push(i);
+      }
+      if (idx.length === 3) {
+        idx.sort((a, b) => b - a).forEach((i) => team.splice(i, 1));
+        team.push(randomUnitOfGrade(nextGrade(g)!));
+        gradeMerged = true;
+        break;
+      }
+    }
+    // 3기 조합: 흔함 3기 → 상위 (히든 포함 우선 — 등급 점프). 2기 합성은 삭제됨
+    let comboed = false;
+    {
+      const cs = team
+        .map((u, i) => ({ u, i }))
+        .filter((x) => x.u.grade === "common");
+      if (cs.length >= 3) {
+        cs.sort(
+          (a, b) =>
+            Number(HIDDEN_IDS.includes(b.u.id)) -
+            Number(HIDDEN_IDS.includes(a.u.id))
+        );
+        const three = cs.slice(0, 3);
+        three
+          .map((x) => x.i)
+          .sort((a, b) => b - a)
+          .forEach((i) => team.splice(i, 1));
+        team.push(comboResult(three.map((x) => x.u.id)));
+        comboed = true;
       }
     }
     // 구매
     let bought = false;
     if (state.gold >= cost() && team.length < cells.length) {
       state.gold -= cost();
-      team.push(randomUnitOfGrade(rollGrade()));
+      team.push(rollUnitSim(deck, round));
       bought = true;
     }
-    if (!crafted && !merged && !bought) break;
+    if (!transcended && !gradeMerged && !comboed && !bought) break;
   }
 }
 
@@ -203,11 +250,13 @@ interface Result {
 function simulate(): Result {
   const team: UnitDef[] = [];
   const state = { gold: START_GOLD, death: DEATH_START, mods: defaultMods() };
+  // 게임과 동일: 일반 흔함 8종 중 3종을 덱으로 선택
+  const deck = [...NORMAL_COMMON_IDS].sort(() => Math.random() - 0.5).slice(0, 3);
   let fieldHp = 0; // 못 잡고 누적된 몹 체력
   let fieldCount = 0;
 
   for (let r = 1; r <= ROUND_MAX; r++) {
-    buyPhase(team, state);
+    buyPhase(team, state, deck, r);
     const boss = r % 10 === 0;
     if (boss) {
       const b = bossStats(r);
@@ -217,6 +266,7 @@ function simulate(): Result {
         return { win: false, round: r, cause: "보스" };
       }
       state.gold += b.gold + roundClearBonus(r);
+      if (BOSS_TICKET[r]) team.push(bestOfGrade(BOSS_TICKET[r]));
       // 남은 시간으로 필드 정리
       const spare = Math.max(0, dps * BOSS_TIME - b.hp);
       const cleared = Math.min(fieldHp, spare);
@@ -224,16 +274,17 @@ function simulate(): Result {
       fieldCount = fieldHp > 0 ? Math.ceil(fieldCount * (fieldHp / (fieldHp + cleared))) : 0;
     } else {
       const m = mobStats(r);
+      const mobHp = m.splits ? m.hp * 1.5 : m.hp; // 분열: 자식 2기×25% 근사
       const dps = evalTeam(team, state.mods, m.armor, false);
-      const need = MOBS_PER_ROUND * m.hp + fieldHp;
+      const need = MOBS_PER_ROUND * mobHp + fieldHp;
       const dmg = dps * ROUND_TIME;
       const killedHp = Math.min(need, dmg);
-      const killedMobs = Math.floor(killedHp / m.hp);
+      const killedMobs = Math.floor(killedHp / mobHp);
       state.gold += Math.min(killedMobs, MOBS_PER_ROUND + fieldCount) * m.gold;
       state.gold += roundClearBonus(r);
       const remain = need - killedHp;
       fieldHp = remain;
-      fieldCount = remain > 0 ? Math.ceil(remain / m.hp) : 0;
+      fieldCount = remain > 0 ? Math.ceil(remain / mobHp) : 0;
       if (fieldCount > MOB_CAP) {
         state.death -= fieldCount - MOB_CAP;
         fieldCount = MOB_CAP;

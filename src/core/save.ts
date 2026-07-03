@@ -53,6 +53,20 @@ export async function updateRecords(
   return r;
 }
 
+// ---------- 도감 (발견한 조합 키 목록, 판을 넘어 누적) ----------
+
+export async function loadDex(): Promise<string[]> {
+  return (await get<string[]>("dex")) ?? [];
+}
+
+export async function addDex(key: string): Promise<void> {
+  const d = await loadDex();
+  if (!d.includes(key)) {
+    d.push(key);
+    await set("dex", d);
+  }
+}
+
 // ---------- 설정 ----------
 
 export interface Settings {
