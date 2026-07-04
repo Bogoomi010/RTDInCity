@@ -198,6 +198,26 @@ export const UNIT_ART: Record<string, UnitArt> = {
       rate: 10,
     },
   },
+  fb1: {
+    ...UNIT_ART_PROFILE.fb1,
+    bust: "/sprites/fb1_bust.png",
+    attack: {
+      url: "/sprites/fb1_attack_sheet.png",
+      frameW: 540,
+      frameH: 540,
+      frames: 4,
+      rate: 10,
+    },
+    walk: {
+      front: "/sprites/fb1_walk_front_sheet.png",
+      back: "/sprites/fb1_walk_back_sheet.png",
+      side: "/sprites/fb1_walk_side_sheet.png",
+      frameW: 540,
+      frameH: 540,
+      frames: 4,
+      rate: 9,
+    },
+  },
 };
 
 /** Phaser 텍스처/애니메이션 키 */
