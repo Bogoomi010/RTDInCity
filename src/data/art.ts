@@ -158,6 +158,26 @@ export const UNIT_ART: Record<string, UnitArt> = {
       rate: 8,
     },
   },
+  tf1: {
+    ...UNIT_ART_PROFILE.tf1,
+    bust: "/sprites/tf1_bust.png",
+    attack: {
+      url: "/sprites/tf1_attack_sheet.png",
+      frameW: 540,
+      frameH: 540,
+      frames: 4,
+      rate: 8,
+    },
+    walk: {
+      front: "/sprites/tf1_walk_front_sheet.png",
+      back: "/sprites/tf1_walk_back_sheet.png",
+      side: "/sprites/tf1_walk_side_sheet.png",
+      frameW: 540,
+      frameH: 540,
+      frames: 4,
+      rate: 9,
+    },
+  },
   fl1: {
     ...UNIT_ART_PROFILE.fl1,
     bust: "/sprites/fl1_bust.png",
