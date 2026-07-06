@@ -1,11 +1,17 @@
 import { HIDDEN_IDS, NORMAL_COMMON_IDS } from "../data/combos";
 import { UNIT_BY_ID } from "../data/units";
 import { DIFFICULTY_DEFS, type Difficulty } from "../data/waves";
+import { bustHtml } from "../data/art";
 
 /**
  * 캐릭터 선택 화면 느낌의 출격 덱 선택.
- * 캐릭터 에셋은 유닛별 고유 도형(SVG)으로 대체 — 정식 에셋 나오면 교체 지점은 shapeSvg().
+ * 버스트 에셋(UNIT_ART)이 있으면 그걸 쓰고, 없으면 유닛별 고유 도형(SVG) 폴백.
  */
+
+/** 버스트 이미지 우선, 없으면 도형 폴백 */
+function charVisual(id: string, size: number): string {
+  return bustHtml(id, size) ?? shapeSvg(id, size);
+}
 
 /** 유닛 → 도형 실루엣 (색 + 형태로 개성 표현) */
 function shapeSvg(id: string, size: number): string {
@@ -77,7 +83,7 @@ export function openDeckSelect(
           const u = UNIT_BY_ID[id];
           return `
             <button class="dkchar" data-id="${id}">
-              <div class="dkshape">${shapeSvg(id, 76)}</div>
+              <div class="dkshape">${charVisual(id, 76)}</div>
               <div class="dkname">${u.name}</div>
             </button>
           `;
@@ -114,14 +120,14 @@ export function openDeckSelect(
     for (let i = 0; i < 3; i++) {
       slots.push(
         picked[i]
-          ? `<div class="dkslot filled">${shapeSvg(picked[i], 40)}</div>`
+          ? `<div class="dkslot filled">${charVisual(picked[i], 40)}</div>`
           : `<div class="dkslot">?</div>`
       );
     }
     for (const hid of HIDDEN_IDS) {
       slots.push(
         `<div class="dkslot hiddenslot" title="${UNIT_BY_ID[hid].name} — 뽑기에서 낮은 확률로 등장">
-           ${shapeSvg(hid, 40)}<span>✨</span>
+           ${charVisual(hid, 40)}<span>✨</span>
          </div>`
       );
     }

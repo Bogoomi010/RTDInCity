@@ -63,8 +63,8 @@ export const UNIT_ART: Record<string, UnitArt> = {
     bust: "/sprites/dv1_bust.png",
     attack: {
       url: "/sprites/dv1_attack_sheet.png",
-      frameW: 540,
-      frameH: 540,
+      frameW: 720,
+      frameH: 720,
       frames: 4,
       rate: 12,
     },
@@ -72,8 +72,8 @@ export const UNIT_ART: Record<string, UnitArt> = {
       front: "/sprites/dv1_walk_front_sheet.png",
       back: "/sprites/dv1_walk_back_sheet.png",
       side: "/sprites/dv1_walk_side_sheet.png",
-      frameW: 540,
-      frameH: 540,
+      frameW: 720,
+      frameH: 720,
       frames: 4,
       rate: 10,
     },
@@ -83,8 +83,8 @@ export const UNIT_ART: Record<string, UnitArt> = {
     bust: "/sprites/pc1_bust.png",
     attack: {
       url: "/sprites/pc1_attack_sheet.png",
-      frameW: 540,
-      frameH: 540,
+      frameW: 720,
+      frameH: 720,
       frames: 4,
       rate: 12,
     },
@@ -92,8 +92,8 @@ export const UNIT_ART: Record<string, UnitArt> = {
       front: "/sprites/pc1_walk_front_sheet.png",
       back: "/sprites/pc1_walk_back_sheet.png",
       side: "/sprites/pc1_walk_side_sheet.png",
-      frameW: 540,
-      frameH: 540,
+      frameW: 720,
+      frameH: 720,
       frames: 4,
       rate: 10,
     },
@@ -103,8 +103,8 @@ export const UNIT_ART: Record<string, UnitArt> = {
     bust: "/sprites/sn1_bust.png",
     attack: {
       url: "/sprites/sn1_attack_sheet.png",
-      frameW: 540,
-      frameH: 540,
+      frameW: 720,
+      frameH: 720,
       frames: 4,
       rate: 10,
     },
@@ -112,8 +112,8 @@ export const UNIT_ART: Record<string, UnitArt> = {
       front: "/sprites/sn1_walk_front_sheet.png",
       back: "/sprites/sn1_walk_back_sheet.png",
       side: "/sprites/sn1_walk_side_sheet.png",
-      frameW: 540,
-      frameH: 540,
+      frameW: 720,
+      frameH: 720,
       frames: 4,
       rate: 10,
     },
@@ -123,8 +123,8 @@ export const UNIT_ART: Record<string, UnitArt> = {
     bust: "/sprites/dr1_bust.png",
     attack: {
       url: "/sprites/dr1_attack_sheet.png",
-      frameW: 540,
-      frameH: 540,
+      frameW: 720,
+      frameH: 720,
       frames: 4,
       rate: 12,
     },
@@ -132,8 +132,8 @@ export const UNIT_ART: Record<string, UnitArt> = {
       front: "/sprites/dr1_walk_front_sheet.png",
       back: "/sprites/dr1_walk_back_sheet.png",
       side: "/sprites/dr1_walk_side_sheet.png",
-      frameW: 540,
-      frameH: 540,
+      frameW: 720,
+      frameH: 720,
       frames: 4,
       rate: 10,
     },
@@ -143,8 +143,8 @@ export const UNIT_ART: Record<string, UnitArt> = {
     bust: "/sprites/dm1_bust.png",
     attack: {
       url: "/sprites/dm1_attack_sheet.png",
-      frameW: 540,
-      frameH: 540,
+      frameW: 720,
+      frameH: 720,
       frames: 4,
       rate: 8,
     },
@@ -152,8 +152,8 @@ export const UNIT_ART: Record<string, UnitArt> = {
       front: "/sprites/dm1_walk_front_sheet.png",
       back: "/sprites/dm1_walk_back_sheet.png",
       side: "/sprites/dm1_walk_side_sheet.png",
-      frameW: 540,
-      frameH: 540,
+      frameW: 720,
+      frameH: 720,
       frames: 4,
       rate: 8,
     },
@@ -163,8 +163,8 @@ export const UNIT_ART: Record<string, UnitArt> = {
     bust: "/sprites/tf1_bust.png",
     attack: {
       url: "/sprites/tf1_attack_sheet.png",
-      frameW: 540,
-      frameH: 540,
+      frameW: 720,
+      frameH: 720,
       frames: 4,
       rate: 8,
     },
@@ -172,8 +172,8 @@ export const UNIT_ART: Record<string, UnitArt> = {
       front: "/sprites/tf1_walk_front_sheet.png",
       back: "/sprites/tf1_walk_back_sheet.png",
       side: "/sprites/tf1_walk_side_sheet.png",
-      frameW: 540,
-      frameH: 540,
+      frameW: 720,
+      frameH: 720,
       frames: 4,
       rate: 9,
     },
@@ -183,8 +183,8 @@ export const UNIT_ART: Record<string, UnitArt> = {
     bust: "/sprites/fl1_bust.png",
     attack: {
       url: "/sprites/fl1_attack_sheet.png",
-      frameW: 540,
-      frameH: 540,
+      frameW: 720,
+      frameH: 720,
       frames: 4,
       rate: 12,
     },
@@ -192,8 +192,8 @@ export const UNIT_ART: Record<string, UnitArt> = {
       front: "/sprites/fl1_walk_front_sheet.png",
       back: "/sprites/fl1_walk_back_sheet.png",
       side: "/sprites/fl1_walk_side_sheet.png",
-      frameW: 540,
-      frameH: 540,
+      frameW: 720,
+      frameH: 720,
       frames: 4,
       rate: 10,
     },
@@ -203,8 +203,8 @@ export const UNIT_ART: Record<string, UnitArt> = {
     bust: "/sprites/fb1_bust.png",
     attack: {
       url: "/sprites/fb1_attack_sheet.png",
-      frameW: 540,
-      frameH: 540,
+      frameW: 720,
+      frameH: 720,
       frames: 4,
       rate: 10,
     },
@@ -212,8 +212,8 @@ export const UNIT_ART: Record<string, UnitArt> = {
       front: "/sprites/fb1_walk_front_sheet.png",
       back: "/sprites/fb1_walk_back_sheet.png",
       side: "/sprites/fb1_walk_side_sheet.png",
-      frameW: 540,
-      frameH: 540,
+      frameW: 720,
+      frameH: 720,
       frames: 4,
       rate: 9,
     },
@@ -223,8 +223,8 @@ export const UNIT_ART: Record<string, UnitArt> = {
     bust: "/sprites/hp1_bust.png",
     attack: {
       url: "/sprites/hp1_attack_sheet.png",
-      frameW: 540,
-      frameH: 540,
+      frameW: 720,
+      frameH: 720,
       frames: 4,
       rate: 12,
     },
@@ -232,8 +232,8 @@ export const UNIT_ART: Record<string, UnitArt> = {
       front: "/sprites/hp1_walk_front_sheet.png",
       back: "/sprites/hp1_walk_back_sheet.png",
       side: "/sprites/hp1_walk_side_sheet.png",
-      frameW: 540,
-      frameH: 540,
+      frameW: 720,
+      frameH: 720,
       frames: 4,
       rate: 12,
     },
@@ -243,8 +243,8 @@ export const UNIT_ART: Record<string, UnitArt> = {
     bust: "/sprites/hc1_bust.png",
     attack: {
       url: "/sprites/hc1_attack_sheet.png",
-      frameW: 540,
-      frameH: 540,
+      frameW: 720,
+      frameH: 720,
       frames: 4,
       rate: 12,
     },
@@ -252,8 +252,8 @@ export const UNIT_ART: Record<string, UnitArt> = {
       front: "/sprites/hc1_walk_front_sheet.png",
       back: "/sprites/hc1_walk_back_sheet.png",
       side: "/sprites/hc1_walk_side_sheet.png",
-      frameW: 540,
-      frameH: 540,
+      frameW: 720,
+      frameH: 720,
       frames: 4,
       rate: 12,
     },
@@ -263,4 +263,22 @@ export const UNIT_ART: Record<string, UnitArt> = {
 /** Phaser 텍스처/애니메이션 키 */
 export function attackKey(unitId: string): string {
   return `${unitId}_attack`;
+}
+
+export type WalkDir = "front" | "back" | "side";
+export const WALK_DIRS: WalkDir[] = ["front", "back", "side"];
+
+export function walkKey(unitId: string, dir: WalkDir): string {
+  return `${unitId}_walk_${dir}`;
+}
+
+/**
+ * 버스트 <img> HTML — DOM UI 공통 (정보 패널·조합법·덱 선택·도감).
+ * 에셋 미등록이면 null (호출부가 폴백 담당), 파일 누락이면 자동 숨김.
+ */
+export function bustHtml(unitId: string, height: number): string | null {
+  const bust = UNIT_ART[unitId]?.bust;
+  if (!bust) return null;
+  return `<img src="${bust}" alt="" draggable="false" onerror="this.style.display='none'"
+    style="height:${height}px;image-rendering:pixelated;vertical-align:middle">`;
 }

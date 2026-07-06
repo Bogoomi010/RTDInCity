@@ -7,6 +7,18 @@ import {
   type UnitDef,
 } from "../data/units";
 import { GACHA_COST, PHASE_BUFF } from "../data/config";
+import { bustHtml } from "../data/art";
+
+/** 조합 재료를 "버스트 + 이름" 나열로 렌더 — 조합법 책·관련 조합법 공통 */
+function matsHtml(key: string, mats: string[]): string {
+  const ids = key.split("+");
+  return ids
+    .map((id, i) => {
+      const img = bustHtml(id, 22) ?? "";
+      return `<span style="display:inline-flex;align-items:center;gap:3px">${img}${mats[i]}</span>`;
+    })
+    .join(" + ");
+}
 import type { CardDef } from "../data/cards";
 import { settingsUI } from "./settings";
 
@@ -47,7 +59,8 @@ export class Hud {
     private onSummon: (grade: Grade, unitId: string) => void,
     onRecall: () => void, // 스토리 존 파견 유닛 회수
     onSpeed: () => number, // 클릭 시 배속 순환, 새 배속 반환
-    onPause: () => boolean // 클릭 시 토글, 정지 여부 반환
+    onPause: () => boolean, // 클릭 시 토글, 정지 여부 반환
+    onGiveUp: () => void // 설정 → 포기하기 (재확인 후 타이틀로)
   ) {
     this.root = document.getElementById("ui")!;
     this.root.innerHTML = `
@@ -146,7 +159,7 @@ export class Hud {
     });
     document
       .getElementById("h-settings")!
-      .addEventListener("click", () => settingsUI.open());
+      .addEventListener("click", () => settingsUI.open({ onGiveUp }));
     this.unitInfo(null, 0);
   }
 
@@ -196,7 +209,9 @@ export class Hud {
     }
 
     const isLegendary = unit.grade === "legendary";
+    const bust = bustHtml(unit.id, 96);
     el.innerHTML = `
+      ${bust ? `<div style="text-align:center;margin-bottom:4px">${bust}</div>` : ""}
       <div class="grade" style="color:${GRADE_COLOR_CSS[unit.grade]}">
         [${GRADE_NAME[unit.grade]}] ${unit.name}
       </div>
@@ -220,7 +235,7 @@ export class Hud {
                 .map(
                   (r) => `
                     <button class="crow ${r.ok ? "ok" : ""}" data-combo="${r.key}" ${r.ok ? "" : "disabled"}>
-                      <span>${r.mats.join(" + ")}</span>
+                      <span>${matsHtml(r.key, r.mats)}</span>
                       <b style="color:${GRADE_COLOR_CSS[r.grade]}">= ${r.result ?? "???"}</b>
                     </button>
                   `
@@ -387,7 +402,7 @@ export class Hud {
       .map(
         (r) => `
           <button class="brow" data-combo="${r.key}" ${r.ok ? "" : "disabled"}>
-            <span>${r.mats.join(" + ")}</span>
+            <span>${matsHtml(r.key, r.mats)}</span>
             <b style="color:${GRADE_COLOR_CSS[this.bookTab]}">= ${r.result ?? "???"}</b>
           </button>
         `

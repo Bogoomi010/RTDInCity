@@ -552,7 +552,8 @@
         background: rgba(255, 255, 255, 0.05);
         border-radius: 10px;
         padding: 10px 14px;
-        min-height: 52px;
+        /* 3줄(이름+능력치+설명)까지 수용 — 호버로 내용이 바뀌어도 패널 높이 고정 */
+        min-height: 68px;
       }
       #deck .dkinfo b {
         color: #ffd166;

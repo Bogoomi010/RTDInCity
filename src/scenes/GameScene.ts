@@ -184,7 +184,8 @@ export class GameScene extends Phaser.Scene {
       () => {
         if (!this.over) this.userPaused = !this.userPaused;
         return this.userPaused;
-      }
+      },
+      () => this.giveUp()
     );
     this.refreshRecipes();
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.hud.destroy());
@@ -984,10 +985,13 @@ export class GameScene extends Phaser.Scene {
       duration: 350,
       onComplete: () => marker.destroy(),
     });
+    // 3열 포메이션 — 각 행의 실제 인원 기준으로 중앙 정렬 (1기 = 클릭 지점 정확히)
     const rows = Math.ceil(n / 3);
     this.selectedUnits.forEach((u, i) => {
-      const ox = ((i % 3) - 1) * 52;
-      const oy = (Math.floor(i / 3) - (rows - 1) / 2) * 52;
+      const row = Math.floor(i / 3);
+      const inRow = Math.min(3, n - row * 3);
+      const ox = ((i % 3) - (inRow - 1) / 2) * 52;
+      const oy = (row - (rows - 1) / 2) * 52;
       u.commandTo(this.clampX(cx + ox), this.clampY(cy + oy));
     });
   }
@@ -1013,6 +1017,17 @@ export class GameScene extends Phaser.Scene {
     if (si >= 0) this.selectedUnits.splice(si, 1);
     if (this.pendingDispatch === unit) this.pendingDispatch = null;
     unit.destroy();
+  }
+
+  /** 설정 → 포기하기 (확인 창에서 재확인 후 호출) — 스토리 진행만 저장하고 타이틀로 */
+  private giveUp(): void {
+    if (this.over) return;
+    this.over = true;
+    this.wave.stop();
+    if (this.storyLoaded) {
+      void saveStory({ chapter: this.storyChapterNo, hp: this.storyHp });
+    }
+    this.scene.start("title");
   }
 
   private gameOver(win: boolean, reason: string): void {
