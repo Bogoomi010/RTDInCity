@@ -1,5 +1,12 @@
 import Phaser from "phaser";
-import { attackKey, UNIT_ART, WALK_DIRS, walkKey } from "../data/art";
+import {
+  attackKey,
+  passiveKey,
+  skillAttackKey,
+  UNIT_ART,
+  WALK_DIRS,
+  walkKey,
+} from "../data/art";
 
 export class BootScene extends Phaser.Scene {
   constructor() {
@@ -17,6 +24,18 @@ export class BootScene extends Phaser.Scene {
         this.load.spritesheet(attackKey(id), art.attack.url, {
           frameWidth: art.attack.frameW,
           frameHeight: art.attack.frameH,
+        });
+      }
+      if (art.skillAttack) {
+        this.load.spritesheet(skillAttackKey(id), art.skillAttack.url, {
+          frameWidth: art.skillAttack.frameW,
+          frameHeight: art.skillAttack.frameH,
+        });
+      }
+      if (art.passive) {
+        this.load.spritesheet(passiveKey(id), art.passive.url, {
+          frameWidth: art.passive.frameW,
+          frameHeight: art.passive.frameH,
         });
       }
       if (art.walk) {
@@ -41,6 +60,28 @@ export class BootScene extends Phaser.Scene {
             end: art.attack.frames - 1,
           }),
           frameRate: art.attack.rate,
+          repeat: 0,
+        });
+      }
+      if (art.skillAttack && this.textures.exists(skillAttackKey(id))) {
+        this.anims.create({
+          key: skillAttackKey(id),
+          frames: this.anims.generateFrameNumbers(skillAttackKey(id), {
+            start: 0,
+            end: art.skillAttack.frames - 1,
+          }),
+          frameRate: art.skillAttack.rate,
+          repeat: 0,
+        });
+      }
+      if (art.passive && this.textures.exists(passiveKey(id))) {
+        this.anims.create({
+          key: passiveKey(id),
+          frames: this.anims.generateFrameNumbers(passiveKey(id), {
+            start: 0,
+            end: art.passive.frames - 1,
+          }),
+          frameRate: art.passive.rate,
           repeat: 0,
         });
       }
