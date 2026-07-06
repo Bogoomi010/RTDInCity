@@ -47,7 +47,7 @@ export class Unit extends Phaser.GameObjects.Container {
     );
     if (idleKey) {
       // 틴트·라벨 없이 아트가 정체성.
-      // 시트 규격: 셀 720 · 캐릭터 높이 560 통일 (normalize.py) → 화면 캐릭터 높이 ≈ 56px
+      // 시트 규격: 셀 144 · 캐릭터 높이 약 112 통일 (normalize.py) → 화면 캐릭터 높이 ≈ 56px
       const s = scene.add.sprite(0, 0, idleKey, 0).setDisplaySize(72, 72);
       // 공격(1회성) 종료 → 대기 프레임 복귀. 걷기(루프)는 stopWalk가 담당
       s.on(Phaser.Animations.Events.ANIMATION_COMPLETE, () => s.setFrame(0));
