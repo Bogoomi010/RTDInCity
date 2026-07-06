@@ -76,34 +76,41 @@ export interface UnitDef {
   desc?: string;
 }
 
+/**
+ * 사거리 2계급 (v3.6):
+ * - 근접(배달·경찰·철거·교통 + 계열 없는 흔함): 등급별 210/220/230/240/250 — 원거리의 절반 수준.
+ *   외곽 칸에서만 도로가 닿음 → RTS 이동으로 전열 배치하는 포지셔닝 요소. 공격력은 원거리보다 높게 보상
+ * - 원거리(저격·드론): 300~480 — 중앙 칸에서도 전 도로 커버
+ * - 초월은 계급 무관 (380~420)
+ */
 export const UNITS: UnitDef[] = [
   // ===== 흔함 추가 2종 — 3기 조합 재료 (계열 없음) =====
-  { id: "fl1", name: "전단지 알바", grade: "common", dmgType: "phys", atk: 5, range: 260, cooldown: 0.65, desc: "한 장만 받아주세요" },
-  { id: "fb1", name: "붕어빵 사장", grade: "common", dmgType: "phys", atk: 12, range: 230, cooldown: 1.3, desc: "팥 앙금 장전 완료" },
+  { id: "fl1", name: "전단지 알바", grade: "common", dmgType: "phys", atk: 7, range: 210, cooldown: 0.65, desc: "한 장만 받아주세요" },
+  { id: "fb1", name: "붕어빵 사장", grade: "common", dmgType: "phys", atk: 15, range: 210, cooldown: 1.3, desc: "팥 앙금 장전 완료" },
 
   // ===== ✨ 히든 흔함 2종 — 뽑기 저확률 전용, 조합의 열쇠 =====
   {
-    id: "hp1", name: "닭둘기", grade: "common", hidden: true, phase: "day", dmgType: "phys", atk: 4, range: 280, cooldown: 0.8,
+    id: "hp1", name: "닭둘기", grade: "common", hidden: true, phase: "day", dmgType: "phys", atk: 5, range: 210, cooldown: 0.8,
     splash: 40, desc: "도시의 낮의 주인 · 떼 쪼기 (반경 40)",
   },
   {
-    id: "hc1", name: "골목대장 냥이", grade: "common", hidden: true, phase: "night", dmgType: "phys", atk: 18, range: 310, cooldown: 1.5,
+    id: "hc1", name: "골목대장 냥이", grade: "common", hidden: true, phase: "night", dmgType: "phys", atk: 23, range: 210, cooldown: 1.5,
     desc: "도시의 밤의 주인 · 암습",
   },
 
   // ===== 🛵 배달 계열 — 고속 연타 물리 =====
-  { id: "dv1", name: "배달 라이더", grade: "common", family: "delivery", dmgType: "phys", atk: 4, range: 250, cooldown: 0.5 },
-  { id: "dv2", name: "슈퍼 라이더", grade: "uncommon", family: "delivery", dmgType: "phys", atk: 9, range: 260, cooldown: 0.45 },
-  { id: "dv3", name: "배달 대행업체 사장님", grade: "special", family: "delivery", dmgType: "phys", atk: 25, range: 270, cooldown: 0.5 },
-  { id: "dv4", name: "물류센터 CEO", grade: "rare", family: "delivery", dmgType: "phys", atk: 70, range: 280, cooldown: 0.5, phase: "night", desc: "새벽 배송" },
-  { id: "dv5", name: "대기업 비서실장", grade: "legendary", family: "delivery", dmgType: "phys", atk: 290, range: 300, cooldown: 0.5 },
+  { id: "dv1", name: "배달 라이더", grade: "common", family: "delivery", dmgType: "phys", atk: 6, range: 210, cooldown: 0.5 },
+  { id: "dv2", name: "슈퍼 라이더", grade: "uncommon", family: "delivery", dmgType: "phys", atk: 11, range: 220, cooldown: 0.45 },
+  { id: "dv3", name: "배달 대행업체 사장님", grade: "special", family: "delivery", dmgType: "phys", atk: 32, range: 230, cooldown: 0.5 },
+  { id: "dv4", name: "물류센터 CEO", grade: "rare", family: "delivery", dmgType: "phys", atk: 88, range: 240, cooldown: 0.5, phase: "night", desc: "새벽 배송" },
+  { id: "dv5", name: "대기업 비서실장", grade: "legendary", family: "delivery", dmgType: "phys", atk: 360, range: 250, cooldown: 0.5 },
 
   // ===== 👮 경찰 계열 — 밸런스 물리 =====
-  { id: "pc1", name: "신입 경관", grade: "common", family: "police", dmgType: "phys", atk: 7, range: 280, cooldown: 0.9 },
-  { id: "pc2", name: "경찰관", grade: "uncommon", family: "police", dmgType: "phys", atk: 16, range: 270, cooldown: 0.8 },
-  { id: "pc3", name: "SWAT 대원", grade: "special", family: "police", dmgType: "phys", atk: 50, range: 280, cooldown: 0.9 },
-  { id: "pc4", name: "특수기동대장", grade: "rare", family: "police", dmgType: "phys", atk: 130, range: 290, cooldown: 0.9 },
-  { id: "pc5", name: "경찰청장", grade: "legendary", family: "police", dmgType: "phys", atk: 480, range: 320, cooldown: 0.85 },
+  { id: "pc1", name: "신입 경관", grade: "common", family: "police", dmgType: "phys", atk: 9, range: 210, cooldown: 0.9 },
+  { id: "pc2", name: "경찰관", grade: "uncommon", family: "police", dmgType: "phys", atk: 20, range: 220, cooldown: 0.8 },
+  { id: "pc3", name: "SWAT 대원", grade: "special", family: "police", dmgType: "phys", atk: 64, range: 230, cooldown: 0.9 },
+  { id: "pc4", name: "특수기동대장", grade: "rare", family: "police", dmgType: "phys", atk: 165, range: 240, cooldown: 0.9 },
+  { id: "pc5", name: "경찰청장", grade: "legendary", family: "police", dmgType: "phys", atk: 600, range: 250, cooldown: 0.85 },
 
   // ===== 🎯 저격 계열 — 장거리 한방 물리 =====
   { id: "sn1", name: "새총 명수", grade: "common", family: "sniper", dmgType: "phys", atk: 13, range: 330, cooldown: 1.6 },
@@ -129,40 +136,40 @@ export const UNITS: UnitDef[] = [
   },
 
   // ===== 💥 철거 계열 — 방깎 지원 물리 =====
-  { id: "dm1", name: "공사장 인부", grade: "common", family: "demolition", dmgType: "phys", atk: 9, range: 240, cooldown: 1.1, phase: "day", desc: "주간 공사" },
+  { id: "dm1", name: "공사장 인부", grade: "common", family: "demolition", dmgType: "phys", atk: 11, range: 210, cooldown: 1.1, phase: "day", desc: "주간 공사" },
   {
-    id: "dm2", name: "철거반원", grade: "uncommon", family: "demolition", dmgType: "phys", atk: 22, range: 250, cooldown: 1.1,
+    id: "dm2", name: "철거반원", grade: "uncommon", family: "demolition", dmgType: "phys", atk: 27, range: 220, cooldown: 1.1,
     shredAmt: 8, shredMs: 3000, desc: "공격 시 방어력 -8 (3초)",
   },
   {
-    id: "dm3", name: "폭발물 처리반", grade: "special", family: "demolition", dmgType: "phys", atk: 80, range: 260, cooldown: 1.6,
+    id: "dm3", name: "폭발물 처리반", grade: "special", family: "demolition", dmgType: "phys", atk: 100, range: 230, cooldown: 1.6,
     shredAmt: 15, shredMs: 3000, desc: "공격 시 방어력 -15 (3초)",
   },
   {
-    id: "dm4", name: "국정원 요원", grade: "rare", family: "demolition", dmgType: "phys", atk: 210, range: 300, cooldown: 1.5,
+    id: "dm4", name: "국정원 요원", grade: "rare", family: "demolition", dmgType: "phys", atk: 265, range: 240, cooldown: 1.5,
     shredAmt: 30, shredMs: 3000, phase: "night", desc: "공격 시 방어력 -30 (3초) · 심야 작전",
   },
   {
-    id: "dm5", name: "재개발 조합장", grade: "legendary", family: "demolition", dmgType: "phys", atk: 560, range: 320, cooldown: 1.2,
+    id: "dm5", name: "재개발 조합장", grade: "legendary", family: "demolition", dmgType: "phys", atk: 700, range: 250, cooldown: 1.2,
     splash: 90, shredAmt: 45, shredMs: 3000, desc: "범위 피해 + 방어력 -45 (3초)",
   },
 
   // ===== 🚧 교통 계열 — 감속·군중 제어 =====
-  { id: "tf1", name: "공원 관리인", grade: "common", family: "traffic", dmgType: "phys", atk: 13, range: 220, cooldown: 1.4 },
+  { id: "tf1", name: "공원 관리인", grade: "common", family: "traffic", dmgType: "phys", atk: 16, range: 210, cooldown: 1.4 },
   {
-    id: "tf2", name: "교통 경찰", grade: "uncommon", family: "traffic", dmgType: "magic", atk: 10, range: 290, cooldown: 1.0,
+    id: "tf2", name: "교통 경찰", grade: "uncommon", family: "traffic", dmgType: "magic", atk: 13, range: 220, cooldown: 1.0,
     slowPct: 0.25, slowMs: 1200, phase: "day", desc: "공격 시 대상 감속 25% · 출퇴근 단속",
   },
   {
-    id: "tf3", name: "진압 방패병", grade: "special", family: "traffic", dmgType: "phys", atk: 30, range: 250, cooldown: 1.0,
+    id: "tf3", name: "진압 방패병", grade: "special", family: "traffic", dmgType: "phys", atk: 38, range: 230, cooldown: 1.0,
     slowPct: 0.4, slowMs: 1500, desc: "공격 시 대상 감속 40%",
   },
   {
-    id: "tf4", name: "도시계획 국장", grade: "rare", family: "traffic", dmgType: "magic", atk: 90, range: 300, cooldown: 1.0,
+    id: "tf4", name: "도시계획 국장", grade: "rare", family: "traffic", dmgType: "magic", atk: 114, range: 240, cooldown: 1.0,
     slowPct: 0.5, slowMs: 1800, desc: "공격 시 대상 감속 50%",
   },
   {
-    id: "tf5", name: "시장", grade: "legendary", family: "traffic", dmgType: "phys", atk: 550, range: 340, cooldown: 1.0,
+    id: "tf5", name: "시장", grade: "legendary", family: "traffic", dmgType: "phys", atk: 690, range: 250, cooldown: 1.0,
     splash: 100, phase: "day", desc: "범위 피해 (반경 100) · 낮의 도시",
   },
 
