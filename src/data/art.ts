@@ -63,127 +63,43 @@ export const UNIT_ART_PROFILE: Record<string, UnitArtProfile> = {
   hc1: { bodyType: "ground", attackType: "melee", attackMotion: "그림자 도약 암습" },
 };
 
+const GENERATED_COMMON_RUNTIME = "/assets/generated/common-runtime";
+
+function generatedCommonArt(
+  id: string,
+  attackRate: number,
+  walkRate: number
+): UnitArt {
+  const base = `${GENERATED_COMMON_RUNTIME}/${id}`;
+  return {
+    ...UNIT_ART_PROFILE[id],
+    bust: `${base}_bust.png`,
+    attack: {
+      url: `${base}_attack_sheet.png`,
+      frameW: 144,
+      frameH: 144,
+      frames: 4,
+      rate: attackRate,
+    },
+    walk: {
+      front: `${base}_walk_front_sheet.png`,
+      back: `${base}_walk_back_sheet.png`,
+      side: `${base}_walk_side_sheet.png`,
+      frameW: 144,
+      frameH: 144,
+      frames: 4,
+      rate: walkRate,
+    },
+  };
+}
+
 export const UNIT_ART: Record<string, UnitArt> = {
-  dv1: {
-    ...UNIT_ART_PROFILE.dv1,
-    bust: "/sprites/dv1_bust.png",
-    attack: {
-      url: "/sprites/dv1_attack_sheet.png",
-      frameW: 144,
-      frameH: 144,
-      frames: 4,
-      rate: 12,
-    },
-    walk: {
-      front: "/sprites/dv1_walk_front_sheet.png",
-      back: "/sprites/dv1_walk_back_sheet.png",
-      side: "/sprites/dv1_walk_side_sheet.png",
-      frameW: 144,
-      frameH: 144,
-      frames: 4,
-      rate: 10,
-    },
-  },
-  pc1: {
-    ...UNIT_ART_PROFILE.pc1,
-    bust: "/sprites/pc1_bust.png",
-    attack: {
-      url: "/sprites/pc1_attack_sheet.png",
-      frameW: 144,
-      frameH: 144,
-      frames: 4,
-      rate: 12,
-    },
-    walk: {
-      front: "/sprites/pc1_walk_front_sheet.png",
-      back: "/sprites/pc1_walk_back_sheet.png",
-      side: "/sprites/pc1_walk_side_sheet.png",
-      frameW: 144,
-      frameH: 144,
-      frames: 4,
-      rate: 10,
-    },
-  },
-  sn1: {
-    ...UNIT_ART_PROFILE.sn1,
-    bust: "/sprites/sn1_bust.png",
-    attack: {
-      url: "/sprites/sn1_attack_sheet.png",
-      frameW: 144,
-      frameH: 144,
-      frames: 4,
-      rate: 10,
-    },
-    walk: {
-      front: "/sprites/sn1_walk_front_sheet.png",
-      back: "/sprites/sn1_walk_back_sheet.png",
-      side: "/sprites/sn1_walk_side_sheet.png",
-      frameW: 144,
-      frameH: 144,
-      frames: 4,
-      rate: 10,
-    },
-  },
-  dr1: {
-    ...UNIT_ART_PROFILE.dr1,
-    bust: "/sprites/dr1_bust.png",
-    attack: {
-      url: "/sprites/dr1_attack_sheet.png",
-      frameW: 144,
-      frameH: 144,
-      frames: 4,
-      rate: 12,
-    },
-    walk: {
-      front: "/sprites/dr1_walk_front_sheet.png",
-      back: "/sprites/dr1_walk_back_sheet.png",
-      side: "/sprites/dr1_walk_side_sheet.png",
-      frameW: 144,
-      frameH: 144,
-      frames: 4,
-      rate: 10,
-    },
-  },
-  dm1: {
-    ...UNIT_ART_PROFILE.dm1,
-    bust: "/sprites/dm1_bust.png",
-    attack: {
-      url: "/sprites/dm1_attack_sheet.png",
-      frameW: 144,
-      frameH: 144,
-      frames: 4,
-      rate: 8,
-    },
-    walk: {
-      front: "/sprites/dm1_walk_front_sheet.png",
-      back: "/sprites/dm1_walk_back_sheet.png",
-      side: "/sprites/dm1_walk_side_sheet.png",
-      frameW: 144,
-      frameH: 144,
-      frames: 4,
-      rate: 8,
-    },
-  },
-  tf1: {
-    ...UNIT_ART_PROFILE.tf1,
-    bust: "/sprites/tf1_bust.png",
-    attack: {
-      url: "/sprites/tf1_attack_sheet.png",
-      frameW: 144,
-      frameH: 144,
-      frames: 4,
-      rate: 8,
-    },
-    walk: {
-      front: "/sprites/tf1_walk_front_sheet.png",
-      back: "/sprites/tf1_walk_back_sheet.png",
-      side: "/sprites/tf1_walk_side_sheet.png",
-      frameW: 144,
-      frameH: 144,
-      frames: 4,
-      rate: 9,
-    },
-  },
+  dv1: generatedCommonArt("dv1", 12, 10),
+  pc1: generatedCommonArt("pc1", 12, 10),
+  sn1: generatedCommonArt("sn1", 10, 10),
+  dr1: generatedCommonArt("dr1", 12, 10),
+  dm1: generatedCommonArt("dm1", 8, 8),
+  tf1: generatedCommonArt("tf1", 8, 9),
   dv2: {
     ...UNIT_ART_PROFILE.dv2,
     bust: "/sprites/dv2_bust.png",
@@ -304,86 +220,10 @@ export const UNIT_ART: Record<string, UnitArt> = {
       rate: 10,
     },
   },
-  fl1: {
-    ...UNIT_ART_PROFILE.fl1,
-    bust: "/sprites/fl1_bust.png",
-    attack: {
-      url: "/sprites/fl1_attack_sheet.png",
-      frameW: 144,
-      frameH: 144,
-      frames: 4,
-      rate: 12,
-    },
-    walk: {
-      front: "/sprites/fl1_walk_front_sheet.png",
-      back: "/sprites/fl1_walk_back_sheet.png",
-      side: "/sprites/fl1_walk_side_sheet.png",
-      frameW: 144,
-      frameH: 144,
-      frames: 4,
-      rate: 10,
-    },
-  },
-  fb1: {
-    ...UNIT_ART_PROFILE.fb1,
-    bust: "/sprites/fb1_bust.png",
-    attack: {
-      url: "/sprites/fb1_attack_sheet.png",
-      frameW: 144,
-      frameH: 144,
-      frames: 4,
-      rate: 10,
-    },
-    walk: {
-      front: "/sprites/fb1_walk_front_sheet.png",
-      back: "/sprites/fb1_walk_back_sheet.png",
-      side: "/sprites/fb1_walk_side_sheet.png",
-      frameW: 144,
-      frameH: 144,
-      frames: 4,
-      rate: 9,
-    },
-  },
-  hp1: {
-    ...UNIT_ART_PROFILE.hp1,
-    bust: "/sprites/hp1_bust.png",
-    attack: {
-      url: "/sprites/hp1_attack_sheet.png",
-      frameW: 144,
-      frameH: 144,
-      frames: 4,
-      rate: 12,
-    },
-    walk: {
-      front: "/sprites/hp1_walk_front_sheet.png",
-      back: "/sprites/hp1_walk_back_sheet.png",
-      side: "/sprites/hp1_walk_side_sheet.png",
-      frameW: 144,
-      frameH: 144,
-      frames: 4,
-      rate: 12,
-    },
-  },
-  hc1: {
-    ...UNIT_ART_PROFILE.hc1,
-    bust: "/sprites/hc1_bust.png",
-    attack: {
-      url: "/sprites/hc1_attack_sheet.png",
-      frameW: 144,
-      frameH: 144,
-      frames: 4,
-      rate: 12,
-    },
-    walk: {
-      front: "/sprites/hc1_walk_front_sheet.png",
-      back: "/sprites/hc1_walk_back_sheet.png",
-      side: "/sprites/hc1_walk_side_sheet.png",
-      frameW: 144,
-      frameH: 144,
-      frames: 4,
-      rate: 12,
-    },
-  },
+  fl1: generatedCommonArt("fl1", 12, 10),
+  fb1: generatedCommonArt("fb1", 10, 9),
+  hp1: generatedCommonArt("hp1", 12, 12),
+  hc1: generatedCommonArt("hc1", 12, 12),
 };
 
 /** Phaser 텍스처/애니메이션 키 */

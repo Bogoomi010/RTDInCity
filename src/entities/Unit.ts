@@ -42,7 +42,7 @@ export class Unit extends Phaser.GameObjects.Container {
     this.ring.setVisible(false);
 
     // 전용 아트: 공격 시트 프레임 0 = 대기 (없으면 정면 걷기 프레임 0)
-    const idleKey = [attackKey(def.id), walkKey(def.id, "front")].find(
+    const idleKey = [walkKey(def.id, "front"), attackKey(def.id)].find(
       (k) => UNIT_ART[def.id] && scene.textures.exists(k)
     );
     if (idleKey) {
@@ -50,7 +50,10 @@ export class Unit extends Phaser.GameObjects.Container {
       // 시트 규격: 셀 144 · 캐릭터 높이 약 112 통일 (normalize.py) → 화면 캐릭터 높이 ≈ 56px
       const s = scene.add.sprite(0, 0, idleKey, 0).setDisplaySize(72, 72);
       // 공격(1회성) 종료 → 대기 프레임 복귀. 걷기(루프)는 stopWalk가 담당
-      s.on(Phaser.Animations.Events.ANIMATION_COMPLETE, () => s.setFrame(0));
+      s.on(Phaser.Animations.Events.ANIMATION_COMPLETE, () => {
+        s.setTexture(this.idleKey, 0);
+        s.setFlipX(false);
+      });
       this.sprite = s;
       this.idleKey = idleKey;
       this.add([this.ring, s]);
