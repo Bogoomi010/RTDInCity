@@ -22,6 +22,7 @@ export interface WaveCallbacks {
 export class WaveSystem {
   round = 0;
   state: "break" | "running" = "break";
+  endless = false; // ♾ 무한 모드 — 40R 승리 후 계속하기
   private timer = FIRST_BREAK * 1000;
   private spawned = 0;
   private spawnT = 0;
@@ -40,13 +41,21 @@ export class WaveSystem {
 
   notifyBossKilled(): void {
     if (this.done) return;
-    if (this.round >= ROUND_MAX) {
+    if (this.round >= ROUND_MAX && !this.endless) {
       this.done = true;
       this.cb.victory();
       return;
     }
     this.cb.message("보스 처치!");
     this.endRound();
+  }
+
+  /** ♾ 승리(40R) 후 무한 모드로 재개 — 다음 라운드부터 계속 */
+  resumeEndless(): void {
+    this.endless = true;
+    this.done = false;
+    this.state = "break";
+    this.timer = ROUND_BREAK * 1000;
   }
 
   stop(): void {
