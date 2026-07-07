@@ -24,7 +24,13 @@ public static class CommonRuntimeSpriteBuilder
 
     public static void Build(string sourceDir, string outputDir)
     {
-        Directory.CreateDirectory(outputDir);
+        // 용도별 하위 폴더 — src/data/art.ts 경로와 동기화
+        string bustDir = Path.Combine(outputDir, "bust");
+        string walkDir = Path.Combine(outputDir, "walk");
+        string attackDir = Path.Combine(outputDir, "attack");
+        Directory.CreateDirectory(bustDir);
+        Directory.CreateDirectory(walkDir);
+        Directory.CreateDirectory(attackDir);
 
         foreach (string id in UnitIds)
         {
@@ -38,10 +44,10 @@ public static class CommonRuntimeSpriteBuilder
             using (Bitmap back = ExtractToFrame(character, CharacterRect(character, 0.72, 0.00, 0.28, 0.84), false))
             using (Bitmap side = ExtractToFrame(attack, AttackRect(attack, 0), false))
             {
-                bust.Save(Path.Combine(outputDir, id + "_bust.png"), ImageFormat.Png);
-                SaveSheet(Path.Combine(outputDir, id + "_walk_front_sheet.png"), front, front, front, front);
-                SaveSheet(Path.Combine(outputDir, id + "_walk_back_sheet.png"), back, back, back, back);
-                SaveSheet(Path.Combine(outputDir, id + "_walk_side_sheet.png"), side, side, side, side);
+                bust.Save(Path.Combine(bustDir, id + "_bust.png"), ImageFormat.Png);
+                SaveSheet(Path.Combine(walkDir, id + "_walk_front_sheet.png"), front, front, front, front);
+                SaveSheet(Path.Combine(walkDir, id + "_walk_back_sheet.png"), back, back, back, back);
+                SaveSheet(Path.Combine(walkDir, id + "_walk_side_sheet.png"), side, side, side, side);
 
                 Bitmap[] attackFrames = new Bitmap[FrameCount];
                 try
@@ -50,7 +56,7 @@ public static class CommonRuntimeSpriteBuilder
                     {
                         attackFrames[i] = ExtractToFrame(attack, AttackRect(attack, i), false);
                     }
-                    SaveSheet(Path.Combine(outputDir, id + "_attack_sheet.png"), attackFrames);
+                    SaveSheet(Path.Combine(attackDir, id + "_attack_sheet.png"), attackFrames);
                 }
                 finally
                 {

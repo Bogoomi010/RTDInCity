@@ -63,6 +63,7 @@ export const UNIT_ART_PROFILE: Record<string, UnitArtProfile> = {
   hc1: { bodyType: "ground", attackType: "melee", attackMotion: "그림자 도약 암습" },
 };
 
+// 용도별 하위 폴더: bust(정보 패널·도감) / attack(공격 모션) / walk(이동 모션)
 const GENERATED_COMMON_RUNTIME = "/assets/generated/common-runtime";
 
 function generatedCommonArt(
@@ -70,21 +71,21 @@ function generatedCommonArt(
   attackRate: number,
   walkRate: number
 ): UnitArt {
-  const base = `${GENERATED_COMMON_RUNTIME}/${id}`;
+  const dir = GENERATED_COMMON_RUNTIME;
   return {
     ...UNIT_ART_PROFILE[id],
-    bust: `${base}_bust.png`,
+    bust: `${dir}/bust/${id}_bust.png`,
     attack: {
-      url: `${base}_attack_sheet.png`,
+      url: `${dir}/attack/${id}_attack_sheet.png`,
       frameW: 144,
       frameH: 144,
       frames: 4,
       rate: attackRate,
     },
     walk: {
-      front: `${base}_walk_front_sheet.png`,
-      back: `${base}_walk_back_sheet.png`,
-      side: `${base}_walk_side_sheet.png`,
+      front: `${dir}/walk/${id}_walk_front_sheet.png`,
+      back: `${dir}/walk/${id}_walk_back_sheet.png`,
+      side: `${dir}/walk/${id}_walk_side_sheet.png`,
       frameW: 144,
       frameH: 144,
       frames: 4,
