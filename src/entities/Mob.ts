@@ -19,6 +19,10 @@ export class Mob extends Phaser.GameObjects.Image {
   private stunUntil = 0;
   private shredAmt = 0;
   private shredUntil = 0;
+  private markMul = 1; // 받는 피해 증가 (스킬 마킹)
+  private markUntil = 0;
+  dotDps = 0; // 도트 (마법 판정) — GameScene이 틱마다 적용
+  dotUntil = 0;
 
   constructor(
     scene: Phaser.Scene,
@@ -88,5 +92,34 @@ export class Mob extends Phaser.GameObjects.Image {
   effArmor(now: number): number {
     const shred = now < this.shredUntil ? this.shredAmt : 0;
     return Math.max(0, this.armor - shred);
+  }
+
+  // ---------- 스킬 상태 (GDD 1.7) ----------
+
+  applyMark(mul: number, durMs: number, now: number): void {
+    if (mul >= this.markMul || now >= this.markUntil) {
+      this.markMul = mul;
+      this.markUntil = now + durMs;
+    }
+  }
+
+  /** 받는 피해 배율 (마킹) */
+  takenMul(now: number): number {
+    return now < this.markUntil ? this.markMul : 1;
+  }
+
+  applyDot(dps: number, durMs: number, now: number): void {
+    if (dps >= this.dotDps || now >= this.dotUntil) {
+      this.dotDps = dps;
+      this.dotUntil = now + durMs;
+    }
+  }
+
+  isStunned(now: number): boolean {
+    return now < this.stunUntil;
+  }
+
+  isShredded(now: number): boolean {
+    return now < this.shredUntil && this.shredAmt > 0;
   }
 }

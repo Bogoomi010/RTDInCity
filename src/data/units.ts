@@ -101,37 +101,37 @@ export const UNITS: UnitDef[] = [
   // ===== 🛵 배달 계열 — 고속 연타 물리 =====
   { id: "dv1", name: "배달 라이더", grade: "common", family: "delivery", dmgType: "phys", atk: 6, range: 210, cooldown: 0.5 },
   { id: "dv2", name: "슈퍼 라이더", grade: "uncommon", family: "delivery", dmgType: "phys", atk: 11, range: 220, cooldown: 0.45 },
-  { id: "dv3", name: "배달 대행업체 사장님", grade: "special", family: "delivery", dmgType: "phys", atk: 32, range: 230, cooldown: 0.5 },
-  { id: "dv4", name: "물류센터 CEO", grade: "rare", family: "delivery", dmgType: "phys", atk: 88, range: 240, cooldown: 0.5, phase: "night", desc: "새벽 배송" },
-  { id: "dv5", name: "대기업 비서실장", grade: "legendary", family: "delivery", dmgType: "phys", atk: 360, range: 250, cooldown: 0.5 },
+  { id: "dv3", name: "배달 대행업체 사장님", grade: "special", family: "delivery", dmgType: "phys", atk: 27, range: 230, cooldown: 0.5 },
+  { id: "dv4", name: "물류센터 CEO", grade: "rare", family: "delivery", dmgType: "phys", atk: 64, range: 240, cooldown: 0.5, phase: "night", desc: "새벽 배송" },
+  { id: "dv5", name: "대기업 비서실장", grade: "legendary", family: "delivery", dmgType: "phys", atk: 196, range: 250, cooldown: 0.5 },
 
   // ===== 👮 경찰 계열 — 밸런스 물리 =====
   { id: "pc1", name: "신입 경관", grade: "common", family: "police", dmgType: "phys", atk: 9, range: 210, cooldown: 0.9 },
-  { id: "pc2", name: "경찰관", grade: "uncommon", family: "police", dmgType: "phys", atk: 20, range: 220, cooldown: 0.8 },
-  { id: "pc3", name: "SWAT 대원", grade: "special", family: "police", dmgType: "phys", atk: 64, range: 230, cooldown: 0.9 },
-  { id: "pc4", name: "특수기동대장", grade: "rare", family: "police", dmgType: "phys", atk: 165, range: 240, cooldown: 0.9 },
-  { id: "pc5", name: "경찰청장", grade: "legendary", family: "police", dmgType: "phys", atk: 600, range: 250, cooldown: 0.85 },
+  { id: "pc2", name: "경찰관", grade: "uncommon", family: "police", dmgType: "phys", atk: 18, range: 220, cooldown: 0.8 },
+  { id: "pc3", name: "SWAT 대원", grade: "special", family: "police", dmgType: "phys", atk: 55, range: 230, cooldown: 0.9 },
+  { id: "pc4", name: "특수기동대장", grade: "rare", family: "police", dmgType: "phys", atk: 127, range: 240, cooldown: 0.9 },
+  { id: "pc5", name: "경찰청장", grade: "legendary", family: "police", dmgType: "phys", atk: 389, range: 250, cooldown: 0.85 },
 
   // ===== 🎯 저격 계열 — 장거리 한방 물리 =====
   { id: "sn1", name: "새총 명수", grade: "common", family: "sniper", dmgType: "phys", atk: 13, range: 330, cooldown: 1.6 },
-  { id: "sn2", name: "사냥꾼", grade: "uncommon", family: "sniper", dmgType: "phys", atk: 34, range: 360, cooldown: 1.7 },
-  { id: "sn3", name: "저격수", grade: "special", family: "sniper", dmgType: "phys", atk: 95, range: 400, cooldown: 1.8 },
-  { id: "sn4", name: "레일건 저격수", grade: "rare", family: "sniper", dmgType: "phys", atk: 260, range: 480, cooldown: 1.9 },
-  { id: "sn5", name: "비밀요원 제로", grade: "legendary", family: "sniper", dmgType: "phys", atk: 950, range: 420, cooldown: 1.6, phase: "night", desc: "밤의 저격수" },
+  { id: "sn2", name: "사냥꾼", grade: "uncommon", family: "sniper", dmgType: "phys", atk: 32, range: 360, cooldown: 1.7 },
+  { id: "sn3", name: "저격수", grade: "special", family: "sniper", dmgType: "phys", atk: 68, range: 400, cooldown: 1.8 },
+  { id: "sn4", name: "레일건 저격수", grade: "rare", family: "sniper", dmgType: "phys", atk: 155, range: 480, cooldown: 1.9 },
+  { id: "sn5", name: "비밀요원 제로", grade: "legendary", family: "sniper", dmgType: "phys", atk: 389, range: 420, cooldown: 1.6, phase: "night", desc: "밤의 저격수" },
 
   // ===== 🚁 드론 계열 — 마법 (방어 무시) =====
   { id: "dr1", name: "드론 동호회원", grade: "common", family: "drone", dmgType: "magic", atk: 8, range: 300, cooldown: 1.0 },
-  { id: "dr2", name: "드론 조종사", grade: "uncommon", family: "drone", dmgType: "magic", atk: 18, range: 320, cooldown: 1.0 },
+  { id: "dr2", name: "드론 조종사", grade: "uncommon", family: "drone", dmgType: "magic", atk: 17, range: 320, cooldown: 1.0 },
   {
-    id: "dr3", name: "헬기 정찰대", grade: "special", family: "drone", dmgType: "magic", atk: 35, range: 330, cooldown: 1.2,
+    id: "dr3", name: "헬기 정찰대", grade: "special", family: "drone", dmgType: "magic", atk: 32, range: 330, cooldown: 1.2,
     splash: 60, phase: "day", desc: "범위 피해 (반경 60) · 주간 정찰",
   },
   {
-    id: "dr4", name: "사이버 요원", grade: "rare", family: "drone", dmgType: "magic", atk: 100, range: 320, cooldown: 1.0,
+    id: "dr4", name: "사이버 요원", grade: "rare", family: "drone", dmgType: "magic", atk: 99, range: 320, cooldown: 1.0,
     stunMs: 800, phase: "night", desc: "공격 시 대상 기절 0.8초 · 심야 해킹",
   },
   {
-    id: "dr5", name: "AI 관제센터장", grade: "legendary", family: "drone", dmgType: "magic", atk: 520, range: 380, cooldown: 1.0,
+    id: "dr5", name: "AI 관제센터장", grade: "legendary", family: "drone", dmgType: "magic", atk: 380, range: 380, cooldown: 1.0,
     splash: 80, desc: "범위 피해 (반경 80)",
   },
 
@@ -142,15 +142,15 @@ export const UNITS: UnitDef[] = [
     shredAmt: 8, shredMs: 3000, desc: "공격 시 방어력 -8 (3초)",
   },
   {
-    id: "dm3", name: "폭발물 처리반", grade: "special", family: "demolition", dmgType: "phys", atk: 100, range: 230, cooldown: 1.6,
+    id: "dm3", name: "폭발물 처리반", grade: "special", family: "demolition", dmgType: "phys", atk: 90, range: 230, cooldown: 1.6,
     shredAmt: 15, shredMs: 3000, desc: "공격 시 방어력 -15 (3초)",
   },
   {
-    id: "dm4", name: "국정원 요원", grade: "rare", family: "demolition", dmgType: "phys", atk: 265, range: 240, cooldown: 1.5,
+    id: "dm4", name: "국정원 요원", grade: "rare", family: "demolition", dmgType: "phys", atk: 246, range: 240, cooldown: 1.5,
     shredAmt: 30, shredMs: 3000, phase: "night", desc: "공격 시 방어력 -30 (3초) · 심야 작전",
   },
   {
-    id: "dm5", name: "재개발 조합장", grade: "legendary", family: "demolition", dmgType: "phys", atk: 700, range: 250, cooldown: 1.2,
+    id: "dm5", name: "재개발 조합장", grade: "legendary", family: "demolition", dmgType: "phys", atk: 464, range: 250, cooldown: 1.2,
     splash: 90, shredAmt: 45, shredMs: 3000, desc: "범위 피해 + 방어력 -45 (3초)",
   },
 
@@ -169,33 +169,33 @@ export const UNITS: UnitDef[] = [
     slowPct: 0.5, slowMs: 1800, desc: "공격 시 대상 감속 50%",
   },
   {
-    id: "tf5", name: "시장", grade: "legendary", family: "traffic", dmgType: "phys", atk: 690, range: 250, cooldown: 1.0,
+    id: "tf5", name: "시장", grade: "legendary", family: "traffic", dmgType: "phys", atk: 560, range: 250, cooldown: 1.0,
     splash: 100, phase: "day", desc: "범위 피해 (반경 100) · 낮의 도시",
   },
 
   // ===== ⚡ 초월 (5) — 조합 레시피 전용 =====
   {
-    id: "t1", name: "시티 가디언", grade: "transcendent", dmgType: "phys", atk: 5000, range: 380, cooldown: 1.2,
+    id: "t1", name: "시티 가디언", grade: "transcendent", dmgType: "phys", atk: 1229, range: 380, cooldown: 1.2,
     desc: "물리 단일 초고화력",
   },
   {
-    id: "t2", name: "스틸 타이탄", grade: "transcendent", dmgType: "phys", atk: 2200, range: 340, cooldown: 1.2,
+    id: "t2", name: "스틸 타이탄", grade: "transcendent", dmgType: "phys", atk: 632, range: 340, cooldown: 1.2,
     splash: 120, desc: "물리 광역 (반경 120)",
   },
   {
-    id: "t3", name: "고스트 프로토콜", grade: "transcendent", dmgType: "magic", atk: 3600, range: 420, cooldown: 1.0,
+    id: "t3", name: "고스트 프로토콜", grade: "transcendent", dmgType: "magic", atk: 971, range: 420, cooldown: 1.0,
     phase: "night", desc: "마법 단일 — 방어 무시 · 밤의 유령",
   },
   {
-    id: "t4", name: "썬더 콜러", grade: "transcendent", dmgType: "magic", atk: 1300, range: 380, cooldown: 0.9,
+    id: "t4", name: "썬더 콜러", grade: "transcendent", dmgType: "magic", atk: 443, range: 380, cooldown: 0.9,
     splash: 100, slowPct: 0.3, slowMs: 1500, desc: "마법 광역 + 감속 30%",
   },
   {
-    id: "t5", name: "아마겟돈 드론", grade: "transcendent", dmgType: "phys", atk: 800, range: 400, cooldown: 0.8,
+    id: "t5", name: "아마겟돈 드론", grade: "transcendent", dmgType: "phys", atk: 328, range: 400, cooldown: 0.8,
     splash: 70, shredAmt: 60, shredMs: 3000, desc: "광역 방어력 -60 (3초) 지원형",
   },
   {
-    id: "t6", name: "시티 로드", grade: "transcendent", dmgType: "phys", atk: 2600, range: 380, cooldown: 1.0,
+    id: "t6", name: "시티 로드", grade: "transcendent", dmgType: "phys", atk: 588, range: 380, cooldown: 1.0,
     splash: 110, desc: "도시 권력의 정점 — 물리 광역 (시장+경찰청장 페어)",
   },
 ];
