@@ -43,11 +43,14 @@ export async function loadRecords(): Promise<Records> {
 
 export async function updateRecords(
   win: boolean,
-  round: number
+  round: number,
+  countPlay = true // ♾ 무한 모드 종료는 판수·승수 미집계 (40R 승리에서 이미 집계) — 최고 라운드만 갱신
 ): Promise<Records> {
   const r = await loadRecords();
-  r.plays++;
-  if (win) r.wins++;
+  if (countPlay) {
+    r.plays++;
+    if (win) r.wins++;
+  }
   r.bestRound = Math.max(r.bestRound, round);
   await set("records", r);
   return r;
@@ -80,6 +83,45 @@ export async function loadStory(): Promise<StoryState | null> {
 
 export async function saveStory(s: StoryState): Promise<void> {
   await set("story", s);
+}
+
+// ---------- 🏆 업적 (판 간 누적) ----------
+
+export async function loadAchievements(): Promise<string[]> {
+  return (await get<string[]>("achievements")) ?? [];
+}
+
+/** true = 신규 달성 */
+export async function addAchievement(id: string): Promise<boolean> {
+  const a = await loadAchievements();
+  if (a.includes(id)) return false;
+  a.push(id);
+  await set("achievements", a);
+  return true;
+}
+
+// ---------- 🎟 다음 판 부스터 (패배 위로 — 히든 확률 가산, 승리 시 리셋) ----------
+
+export async function loadBooster(): Promise<number> {
+  return (await get<number>("booster")) ?? 0;
+}
+
+export async function saveBooster(v: number): Promise<void> {
+  await set("booster", v);
+}
+
+// ---------- 통계 (업적 판정용 누적 카운터) ----------
+
+export interface Counters {
+  goldenKills: number;
+}
+
+export async function loadCounters(): Promise<Counters> {
+  return (await get<Counters>("counters")) ?? { goldenKills: 0 };
+}
+
+export async function saveCounters(c: Counters): Promise<void> {
+  await set("counters", c);
 }
 
 // ---------- 설정 ----------
