@@ -19,6 +19,21 @@ export interface UnitArt {
     frames: number;
     rate: number; // fps
   };
+  /** 공격 스킬/패시브 발동 이펙트 시트 — 현재 스킬 로직 미구현, 선로드/선등록용 */
+  skillAttack?: {
+    url: string;
+    frameW: number;
+    frameH: number;
+    frames: number;
+    rate: number;
+  };
+  passive?: {
+    url: string;
+    frameW: number;
+    frameH: number;
+    frames: number;
+    rate: number;
+  };
   /** 이동 모션 스프라이트 시트 — front=아래, back=위, side=오른쪽(왼쪽은 미러) */
   walk?: {
     front: string;
@@ -57,6 +72,12 @@ export const UNIT_ART_PROFILE: Record<string, UnitArtProfile> = {
   dr2: { bodyType: "air", attackType: "ranged", attackMotion: "중형 드론 사출" },
   dm2: { bodyType: "ground", attackType: "melee", attackMotion: "대형 해머 풀스윙" },
   tf2: { bodyType: "ground", attackType: "ranged", attackMotion: "야광봉 수신호" },
+  dv3: { bodyType: "ground", attackType: "ranged", attackMotion: "콜 배정과 동시에 투척" },
+  pc3: { bodyType: "ground", attackType: "ranged", attackMotion: "고무탄 사격" },
+  sn3: { bodyType: "ground", attackType: "ranged", attackMotion: "대형 저격총 사격" },
+  dr3: { bodyType: "air", attackType: "ranged", attackMotion: "헬기 상공 광역 사격" },
+  dm3: { bodyType: "ground", attackType: "melee", attackMotion: "폭약 설치 후 기폭" },
+  tf3: { bodyType: "ground", attackType: "melee", attackMotion: "방패 밀치기" },
   fl1: { bodyType: "ground", attackType: "ranged", attackMotion: "전단지 표창 투척" },
   fb1: { bodyType: "ground", attackType: "ranged", attackMotion: "갓 구운 붕어빵 투척" },
   hp1: { bodyType: "air", attackType: "ranged", attackMotion: "비둘기 떼 파견 쪼기" },
@@ -221,6 +242,203 @@ export const UNIT_ART: Record<string, UnitArt> = {
       rate: 10,
     },
   },
+  dv3: {
+    ...UNIT_ART_PROFILE.dv3,
+    bust: "/sprites/dv3_bust.png",
+    attack: {
+      url: "/sprites/dv3_attack_sheet.png",
+      frameW: 144,
+      frameH: 144,
+      frames: 4,
+      rate: 12,
+    },
+    skillAttack: {
+      url: "/sprites/dv3_skill_attack_sheet.png",
+      frameW: 144,
+      frameH: 144,
+      frames: 4,
+      rate: 12,
+    },
+    walk: {
+      front: "/sprites/dv3_walk_front_sheet.png",
+      back: "/sprites/dv3_walk_back_sheet.png",
+      side: "/sprites/dv3_walk_side_sheet.png",
+      frameW: 144,
+      frameH: 144,
+      frames: 4,
+      rate: 10,
+    },
+  },
+  pc3: {
+    ...UNIT_ART_PROFILE.pc3,
+    bust: "/sprites/pc3_bust.png",
+    attack: {
+      url: "/sprites/pc3_attack_sheet.png",
+      frameW: 144,
+      frameH: 144,
+      frames: 4,
+      rate: 11,
+    },
+    skillAttack: {
+      url: "/sprites/pc3_skill_attack_sheet.png",
+      frameW: 144,
+      frameH: 144,
+      frames: 4,
+      rate: 12,
+    },
+    passive: {
+      url: "/sprites/pc3_passive_sheet.png",
+      frameW: 144,
+      frameH: 144,
+      frames: 4,
+      rate: 8,
+    },
+    walk: {
+      front: "/sprites/pc3_walk_front_sheet.png",
+      back: "/sprites/pc3_walk_back_sheet.png",
+      side: "/sprites/pc3_walk_side_sheet.png",
+      frameW: 144,
+      frameH: 144,
+      frames: 4,
+      rate: 9,
+    },
+  },
+  sn3: {
+    ...UNIT_ART_PROFILE.sn3,
+    bust: "/sprites/sn3_bust.png",
+    attack: {
+      url: "/sprites/sn3_attack_sheet.png",
+      frameW: 144,
+      frameH: 144,
+      frames: 4,
+      rate: 8,
+    },
+    skillAttack: {
+      url: "/sprites/sn3_skill_attack_sheet.png",
+      frameW: 144,
+      frameH: 144,
+      frames: 4,
+      rate: 12,
+    },
+    passive: {
+      url: "/sprites/sn3_passive_sheet.png",
+      frameW: 144,
+      frameH: 144,
+      frames: 4,
+      rate: 8,
+    },
+    walk: {
+      front: "/sprites/sn3_walk_front_sheet.png",
+      back: "/sprites/sn3_walk_back_sheet.png",
+      side: "/sprites/sn3_walk_side_sheet.png",
+      frameW: 144,
+      frameH: 144,
+      frames: 4,
+      rate: 8,
+    },
+  },
+  dr3: {
+    ...UNIT_ART_PROFILE.dr3,
+    bust: "/sprites/dr3_bust.png",
+    attack: {
+      url: "/sprites/dr3_attack_sheet.png",
+      frameW: 144,
+      frameH: 144,
+      frames: 4,
+      rate: 10,
+    },
+    skillAttack: {
+      url: "/sprites/dr3_skill_attack_sheet.png",
+      frameW: 144,
+      frameH: 144,
+      frames: 4,
+      rate: 12,
+    },
+    passive: {
+      url: "/sprites/dr3_passive_sheet.png",
+      frameW: 144,
+      frameH: 144,
+      frames: 4,
+      rate: 8,
+    },
+    walk: {
+      front: "/sprites/dr3_walk_front_sheet.png",
+      back: "/sprites/dr3_walk_back_sheet.png",
+      side: "/sprites/dr3_walk_side_sheet.png",
+      frameW: 144,
+      frameH: 144,
+      frames: 4,
+      rate: 10,
+    },
+  },
+  dm3: {
+    ...UNIT_ART_PROFILE.dm3,
+    bust: "/sprites/dm3_bust.png",
+    attack: {
+      url: "/sprites/dm3_attack_sheet.png",
+      frameW: 144,
+      frameH: 144,
+      frames: 4,
+      rate: 8,
+    },
+    skillAttack: {
+      url: "/sprites/dm3_skill_attack_sheet.png",
+      frameW: 144,
+      frameH: 144,
+      frames: 4,
+      rate: 12,
+    },
+    passive: {
+      url: "/sprites/dm3_passive_sheet.png",
+      frameW: 144,
+      frameH: 144,
+      frames: 4,
+      rate: 8,
+    },
+    walk: {
+      front: "/sprites/dm3_walk_front_sheet.png",
+      back: "/sprites/dm3_walk_back_sheet.png",
+      side: "/sprites/dm3_walk_side_sheet.png",
+      frameW: 144,
+      frameH: 144,
+      frames: 4,
+      rate: 7,
+    },
+  },
+  tf3: {
+    ...UNIT_ART_PROFILE.tf3,
+    bust: "/sprites/tf3_bust.png",
+    attack: {
+      url: "/sprites/tf3_attack_sheet.png",
+      frameW: 144,
+      frameH: 144,
+      frames: 4,
+      rate: 10,
+    },
+    skillAttack: {
+      url: "/sprites/tf3_skill_attack_sheet.png",
+      frameW: 144,
+      frameH: 144,
+      frames: 4,
+      rate: 12,
+    },
+    passive: {
+      url: "/sprites/tf3_passive_sheet.png",
+      frameW: 144,
+      frameH: 144,
+      frames: 4,
+      rate: 8,
+    },
+    walk: {
+      front: "/sprites/tf3_walk_front_sheet.png",
+      back: "/sprites/tf3_walk_back_sheet.png",
+      side: "/sprites/tf3_walk_side_sheet.png",
+      frameW: 144,
+      frameH: 144,
+      frames: 4,
+      rate: 8,
+    },
+  },
   fl1: generatedCommonArt("fl1", 12, 10),
   fb1: generatedCommonArt("fb1", 10, 9),
   hp1: generatedCommonArt("hp1", 12, 12),
@@ -230,6 +448,14 @@ export const UNIT_ART: Record<string, UnitArt> = {
 /** Phaser 텍스처/애니메이션 키 */
 export function attackKey(unitId: string): string {
   return `${unitId}_attack`;
+}
+
+export function skillAttackKey(unitId: string): string {
+  return `${unitId}_skill_attack`;
+}
+
+export function passiveKey(unitId: string): string {
+  return `${unitId}_passive`;
 }
 
 export type WalkDir = "front" | "back" | "side";

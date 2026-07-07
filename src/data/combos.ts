@@ -52,12 +52,6 @@ const SHRED_AMT: Partial<Record<Grade, number>> = { uncommon: 8, special: 15, ra
 
 /** 큐레이션 작명 — AAA 시그니처 10종 + 하이라이트 (키는 comboKey 순서) */
 const NAMES: Record<string, string> = {
-  "dv1+dv1+dv1": "번개 배달왕",
-  "pc1+pc1+pc1": "지구대의 전설",
-  "sn1+sn1+sn1": "새총 3연성",
-  "dr1+dr1+dr1": "드론 편대",
-  "dm1+dm1+dm1": "철거 3인방",
-  "tf1+tf1+tf1": "공원의 수호신",
   "fl1+fl1+fl1": "전단지 폭풍",
   "fb1+fb1+fb1": "붕어빵 푸드트럭 제국",
   "hp1+hp1+hp1": "비둘기 대군단",
@@ -66,6 +60,16 @@ const NAMES: Record<string, string> = {
   "pc1+hc1+hc1": "K-냥 수사대",
   "hp1+hp1+hc1": "쫓는 자와 쫓기는 자",
   "hp1+hc1+hc1": "골목의 포식자들",
+};
+
+/** docs/characters/2-uncommon.md 기준: 같은 계열 흔함 3기 → 고정 안흔함 */
+const FIXED_UNCOMMON_RESULTS: Record<string, string> = {
+  "dv1+dv1+dv1": "dv2",
+  "pc1+pc1+pc1": "pc2",
+  "sn1+sn1+sn1": "sn2",
+  "dr1+dr1+dr1": "dr2",
+  "dm1+dm1+dm1": "dm2",
+  "tf1+tf1+tf1": "tf2",
 };
 
 /** 재료 3기 → 정렬된 조합 키 ("a+b+c") */
@@ -110,6 +114,9 @@ const cache = new Map<string, UnitDef>();
 /** 조합 결과 유닛 생성 (결정적 — 같은 재료면 항상 같은 결과) */
 export function comboResult(ids: string[]): UnitDef {
   const key = comboKey(ids);
+  const fixedId = FIXED_UNCOMMON_RESULTS[key];
+  if (fixedId) return UNIT_BY_ID[fixedId];
+
   const hit = cache.get(key);
   if (hit) return hit;
 
