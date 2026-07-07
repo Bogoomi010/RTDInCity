@@ -31,6 +31,27 @@ import {
 } from "../src/data/combos.ts";
 import { CARDS, CARD_ROUNDS, defaultMods, type Mods } from "../src/data/cards.ts";
 import {
+  hasBossMagic,
+  skillDpsMul,
+  skillShredAmt,
+  teamAuraMul,
+} from "../src/data/skills.ts";
+import {
+  EVENT_CHANCE,
+  EVENT_MIN_ROUND,
+  EVENT_SIM_GOLD,
+  HIDDEN_BASE,
+  JACKPOT_CHANCE,
+  JACKPOT_ROLLS,
+  MUTATOR_SIM_GOLD_MUL,
+  PITY_LIMIT,
+  PITY_MIN_ROUND,
+  STREAK_SIM_MUL,
+} from "../src/data/events.ts";
+
+/** 도파민 경제 기대 배율 — 스트릭 + 변이 라운드 (몹 골드에 적용, data/events.ts와 동기) */
+const KILL_GOLD_MUL = STREAK_SIM_MUL * MUTATOR_SIM_GOLD_MUL;
+import {
   TRACK,
   GRID,
   cellCenter,
@@ -87,10 +108,15 @@ function evalTeam(
   armor: number,
   forBoss: boolean
 ): number {
-  // 방깎: 팀 내 최대치 적용 (게임은 단일 최강 디버프 유지)
-  const shred = Math.max(0, ...team.map((u) => u.shredAmt ?? 0));
+  // 방깎: 팀 내 최대치 적용 (게임은 단일 최강 디버프 유지) — 스킬 방깎 포함 (skills.ts)
+  const shred = Math.max(
+    0,
+    ...team.map((u) => Math.max(u.shredAmt ?? 0, skillShredAmt(u.id)))
+  );
   const effArmor = Math.max(0, armor - shred);
   const physFactor = 1 - armorReduction(effArmor);
+
+  const teamIds = team.map((u) => u.id);
 
   // 커버리지 좋은 칸부터 강한 유닛 배치
   const sorted = [...team].sort((a, b) => b.atk / b.cooldown - a.atk / a.cooldown);
@@ -109,9 +135,15 @@ function evalTeam(
     }
     freeCells.splice(bi, 1);
     let d = (u.atk / (u.cooldown * mods.cdMul)) * mods.atkMul;
-    d *= u.dmgType === "phys" ? mods.physMul * physFactor : mods.magicMul;
+    // 마법 판정: 마법 유닛 또는 보스 상대 마스터 키(t6)
+    const magic = u.dmgType === "magic" || (forBoss && hasBossMagic(u.id));
+    d *= magic ? mods.magicMul : mods.physMul * physFactor;
     if (u.phase) d *= 1 + (PHASE_BUFF - 1) / 2; // 낮/밤 버프 — 평균 가동률 50%
     if (u.splash && !forBoss) d *= 2.0; // 라인이 뭉치면 스플래시 평균 2타겟
+    // 스킬 (GDD 1.7): 기대 DPS 배율 + 팀 오라 — 게임과 같은 데이터(skills.ts) 사용
+    d *= skillDpsMul(u.id, forBoss);
+    const aura = teamAuraMul(teamIds, u.family);
+    d *= aura.atkMul / aura.cdMul;
     dps += d * bc;
   }
   return dps;
@@ -130,18 +162,25 @@ function bestOfGrade(g: Grade): UnitDef {
 }
 
 // ---------- 봇 구매/합성/조합 ----------
-/** 게임과 동일한 뽑기: 흔함은 덱 3종에서, 6%로 히든 */
-function rollUnitSim(deck: string[], round: number): UnitDef {
-  const grade = rollGrade(round);
+/** 게임과 동일한 뽑기: 흔함은 덱 3종에서 + 히든 + 🎰 천장(50연속 → 전설 확정) */
+function rollUnitSim(
+  deck: string[],
+  round: number,
+  state: { pity: number }
+): UnitDef {
+  let grade = rollGrade(round);
+  if (round >= PITY_MIN_ROUND && state.pity >= PITY_LIMIT) grade = "legendary";
+  if (grade === "legendary") state.pity = 0;
+  else if (round >= PITY_MIN_ROUND) state.pity++;
   if (grade !== "common") return randomUnitOfGrade(grade);
-  if (Math.random() < 0.06)
+  if (Math.random() < HIDDEN_BASE)
     return UNIT_BY_ID[HIDDEN_IDS[Math.floor(Math.random() * HIDDEN_IDS.length)]];
   return UNIT_BY_ID[deck[Math.floor(Math.random() * deck.length)]];
 }
 
 function buyPhase(
   team: UnitDef[],
-  state: { gold: number; mods: Mods },
+  state: { gold: number; mods: Mods; pity: number },
   deck: string[],
   round: number
 ): void {
@@ -196,11 +235,19 @@ function buyPhase(
         comboed = true;
       }
     }
-    // 구매
+    // 구매 (+ 🎰 잭팟: 유료 뽑기당 확률로 무료 연속 뽑기)
     let bought = false;
     if (state.gold >= cost() && team.length < cells.length) {
       state.gold -= cost();
-      team.push(rollUnitSim(deck, round));
+      team.push(rollUnitSim(deck, round, state));
+      if (Math.random() < JACKPOT_CHANCE) {
+        const n =
+          JACKPOT_ROLLS[0] +
+          Math.floor(Math.random() * (JACKPOT_ROLLS[1] - JACKPOT_ROLLS[0] + 1));
+        for (let i = 0; i < n && team.length < cells.length; i++) {
+          team.push(rollUnitSim(deck, round, state));
+        }
+      }
       bought = true;
     }
     if (!transcended && !gradeMerged && !comboed && !bought) break;
@@ -252,7 +299,7 @@ interface Result {
 
 function simulate(): Result {
   const team: UnitDef[] = [];
-  const state = { gold: START_GOLD, death: DEATH_START, mods: defaultMods() };
+  const state = { gold: START_GOLD, death: DEATH_START, mods: defaultMods(), pity: 0 };
   // 게임과 동일: 일반 흔함 8종 중 3종을 덱으로 선택
   const deck = [...NORMAL_COMMON_IDS].sort(() => Math.random() - 0.5).slice(0, 3);
   let fieldHp = 0; // 못 잡고 누적된 몹 체력
@@ -283,8 +330,13 @@ function simulate(): Result {
       const dmg = dps * ROUND_TIME;
       const killedHp = Math.min(need, dmg);
       const killedMobs = Math.floor(killedHp / mobHp);
-      state.gold += Math.min(killedMobs, MOBS_PER_ROUND + fieldCount) * m.gold;
+      // 몹 골드 × 도파민 기대 배율 (스트릭 + 변이 라운드)
+      state.gold += Math.round(
+        Math.min(killedMobs, MOBS_PER_ROUND + fieldCount) * m.gold * KILL_GOLD_MUL
+      );
       state.gold += roundClearBonus(r);
+      // 📰 속보 이벤트 기대값
+      if (r >= EVENT_MIN_ROUND) state.gold += EVENT_CHANCE * EVENT_SIM_GOLD;
       const remain = need - killedHp;
       fieldHp = remain;
       fieldCount = remain > 0 ? Math.ceil(remain / mobHp) : 0;
@@ -299,7 +351,40 @@ function simulate(): Result {
     }
     if (CARD_ROUNDS.has(r)) pickCard(team, state);
   }
-  return { win: true, round: ROUND_MAX, cause: "-" };
+
+  // ♾ 무한 모드: 승리한 봇은 계속 진행 — 도달 라운드가 기록 (상한 120R 가드)
+  for (let r = ROUND_MAX + 1; r <= 120; r++) {
+    buyPhase(team, state, deck, r);
+    const boss = r % 10 === 0;
+    if (boss) {
+      const b = bossStats(r);
+      const dps = evalTeam(team, state.mods, b.armor, true);
+      if (dps * 0.85 * BOSS_TIME < b.hp) return { win: true, round: r, cause: "-" };
+      state.gold += b.gold + roundClearBonus(r);
+      team.push(bestOfGrade("legendary")); // 무한 보스 = 전설 소환권
+      fieldHp = 0;
+      fieldCount = 0;
+    } else {
+      const m = mobStats(r);
+      const mobHp = m.splits ? m.hp * 1.5 : m.hp;
+      const dps = evalTeam(team, state.mods, m.armor, false);
+      const need = MOBS_PER_ROUND * mobHp + fieldHp;
+      const killedHp = Math.min(need, dps * ROUND_TIME);
+      state.gold +=
+        Math.round(Math.floor(killedHp / mobHp) * m.gold * KILL_GOLD_MUL) +
+        roundClearBonus(r) +
+        EVENT_CHANCE * EVENT_SIM_GOLD;
+      fieldHp = need - killedHp;
+      fieldCount = fieldHp > 0 ? Math.ceil(fieldHp / mobHp) : 0;
+      if (fieldCount > MOB_CAP) {
+        state.death -= fieldCount - MOB_CAP;
+        fieldCount = MOB_CAP;
+        fieldHp = Math.min(fieldHp, fieldCount * m.hp);
+      }
+      if (state.death <= 0) return { win: true, round: r, cause: "-" };
+    }
+  }
+  return { win: true, round: 120, cause: "-" };
 }
 
 // ---------- 실행 — 난이도 3종 일괄 검증 ----------
@@ -319,6 +404,13 @@ for (const d of Object.keys(DIFFICULTY_DEFS) as Difficulty[]) {
   }
   console.log(`\n=== ${DIFFICULTY_DEFS[d].name} (몹 HP ×${DIFFICULTY_DEFS[d].hpMul}) — ${N}판 ===`);
   console.log(`승률: ${((wins / N) * 100).toFixed(1)}%`);
+  const endlessRounds = results.filter((r) => r.win).map((r) => r.round);
+  if (endlessRounds.length > 0) {
+    const avg = endlessRounds.reduce((s, r) => s + r, 0) / endlessRounds.length;
+    console.log(
+      `♾ 무한 도달: 평균 ${avg.toFixed(1)}R · 최고 ${Math.max(...endlessRounds)}R`
+    );
+  }
   console.log(`패배 원인:`, byCause);
   console.log(
     `패배 라운드 분포:`,
