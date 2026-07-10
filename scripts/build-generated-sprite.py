@@ -276,8 +276,9 @@ def normalize_motion(cells: list[Image.Image]) -> list[Image.Image]:
         content = cell.crop(box)
         size = (max(1, round(content.width * scale)), max(1, round(content.height * scale)))
         resized = content.resize(size, Image.Resampling.LANCZOS)
-        if resized.width > FRAME - 8 or resized.height > FRAME - 8:
-            contain = min((FRAME - 8) / resized.width, (FRAME - 8) / resized.height)
+        if resized.width > FRAME - 8 or resized.height > BASELINE:
+            # 큰 날개·긴 무기도 캔버스뿐 아니라 선언된 발끝 기준선 안에 맞춘다.
+            contain = min((FRAME - 8) / resized.width, BASELINE / resized.height)
             resized = resized.resize(
                 (max(1, round(resized.width * contain)), max(1, round(resized.height * contain))),
                 Image.Resampling.LANCZOS,
