@@ -135,6 +135,16 @@ def connected_components(image: Image.Image) -> list[Component]:
         y0 = min(run[0] for run in component_runs)
         x1 = max(run[2] for run in component_runs)
         y1 = max(run[0] + 1 for run in component_runs)
+        bbox_area = (x1 - x0) * (y1 - y0)
+        # 모델이 간혹 그리는 셀 구분선은 캐릭터/이펙트가 아니므로 제외한다.
+        if (x1 - x0 <= 5 and y1 - y0 >= height * 0.8) or (
+            y1 - y0 <= 5 and x1 - x0 >= width * 0.8
+        ) or (
+            x1 - x0 >= width * 0.8
+            and y1 - y0 >= height * 0.8
+            and area < bbox_area * 0.1
+        ):
+            continue
         components.append(Component(component_runs, area, (x0, y0, x1, y1)))
     return components
 
@@ -178,6 +188,38 @@ def projection_split(image: Image.Image, columns: int, rows: int) -> list[list[I
             for column in range(columns)
         ]
         for row in range(rows)
+    ]
+
+
+def occupied_band_split(image: Image.Image, columns: int, rows: int) -> list[list[Image.Image]]:
+    """균일 격자를 지키지 않은 시트에서 실제 알파 점유 행/열을 검출한다."""
+    alpha = image.getchannel("A")
+
+    def bands(length: int, occupied: list[bool]) -> list[tuple[int, int]]:
+        result: list[tuple[int, int]] = []
+        start: int | None = None
+        for index in range(length + 1):
+            value = index < length and occupied[index]
+            if value and start is None:
+                start = index
+            elif not value and start is not None:
+                result.append((start, index))
+                start = None
+        return result
+
+    x_bands = bands(
+        image.width,
+        [alpha.crop((x, 0, x + 1, image.height)).getbbox() is not None for x in range(image.width)],
+    )
+    y_bands = bands(
+        image.height,
+        [alpha.crop((0, y, image.width, y + 1)).getbbox() is not None for y in range(image.height)],
+    )
+    if len(x_bands) != columns or len(y_bands) != rows:
+        return projection_split(image, columns, rows)
+    return [
+        [image.crop((x0, y0, x1, y1)) for x0, x1 in x_bands]
+        for y0, y1 in y_bands
     ]
 
 
@@ -279,6 +321,12 @@ def main() -> None:
     parser.add_argument("--attack", type=Path, required=True)
     parser.add_argument("--attack-rows", type=int, default=1, choices=(1, 2))
     parser.add_argument("--walk", type=Path, required=True)
+    parser.add_argument("--walk-grid-rows", type=int)
+    parser.add_argument("--walk-grid-columns", type=int, default=8)
+    parser.add_argument(
+        "--walk-row-map",
+        help="8열 원본에서 정면,후면,측면으로 사용할 행 번호(예: 0,2,3)",
+    )
     parser.add_argument(
         "--walk-side-spacious",
         type=Path,
@@ -299,7 +347,20 @@ def main() -> None:
     ]
     save_sheet(normalize_motion(attack_cells), args.out / f"{args.unit_id}_attack_sheet.png")
 
-    walk_rows = extract_sprites(walk, 24, 3)
+    if args.walk_row_map:
+        if not args.walk_grid_rows:
+            parser.error("--walk-row-map에는 --walk-grid-rows가 필요합니다")
+        row_map = [int(value) for value in args.walk_row_map.split(",")]
+        if len(row_map) != 3:
+            parser.error("--walk-row-map은 정면,후면,측면 3개 행이어야 합니다")
+        source_rows = occupied_band_split(
+            walk, args.walk_grid_columns, args.walk_grid_rows
+        )
+        walk_rows = [source_rows[index] for index in row_map]
+        # 7포즈 원본은 첫 자세를 복귀 프레임으로 덧붙여 8프레임 루프로 만든다.
+        walk_rows = [cells + [cells[0]] if len(cells) == 7 else cells for cells in walk_rows]
+    else:
+        walk_rows = extract_sprites(walk, 24, 3)
     for direction, cells in zip(("front", "back", "side"), walk_rows, strict=True):
         save_sheet(
             normalize_motion(cells),
