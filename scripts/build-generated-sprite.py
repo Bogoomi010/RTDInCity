@@ -298,9 +298,16 @@ def save_sheet(frames: list[Image.Image], path: Path) -> None:
     sheet.save(path, optimize=True)
 
 
-def build_character_assets(character: Image.Image, unit_id: str, out: Path) -> None:
+def build_character_assets(
+    character: Image.Image,
+    unit_id: str,
+    out: Path,
+    bust_width_ratio: float,
+) -> None:
     # imagegen 마스터 규격: 좌측 약 38%가 버스트, 우측이 3방향 전신이다.
-    bust_region = character.crop((0, 0, round(character.width * 0.38), character.height))
+    bust_region = character.crop(
+        (0, 0, round(character.width * bust_width_ratio), character.height)
+    )
     bust = fit_canvas(bust_region, 512, 512, padding=8, align_y="top")
     bust.save(out / f"{unit_id}_bust.png", optimize=True)
 
@@ -321,6 +328,7 @@ def main() -> None:
     parser.add_argument("--attack", type=Path, required=True)
     parser.add_argument("--attack-rows", type=int, default=1, choices=(1, 2))
     parser.add_argument("--walk", type=Path, required=True)
+    parser.add_argument("--bust-width-ratio", type=float, default=0.38)
     parser.add_argument("--walk-grid-rows", type=int)
     parser.add_argument("--walk-grid-columns", type=int, default=8)
     parser.add_argument(
@@ -334,12 +342,14 @@ def main() -> None:
     )
     parser.add_argument("--out", type=Path, default=Path("public/sprites/rare"))
     args = parser.parse_args()
+    if not 0.2 <= args.bust_width_ratio <= 0.5:
+        parser.error("--bust-width-ratio는 0.2~0.5 범위여야 합니다")
 
     character = Image.open(args.character).convert("RGBA")
     attack = Image.open(args.attack).convert("RGBA")
     walk = Image.open(args.walk).convert("RGBA")
 
-    build_character_assets(character, args.unit_id, args.out)
+    build_character_assets(character, args.unit_id, args.out, args.bust_width_ratio)
     attack_cells = [
         cell
         for row in extract_sprites(attack, 8, args.attack_rows)
