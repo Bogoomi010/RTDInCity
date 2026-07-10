@@ -11,6 +11,11 @@ export interface UnitArt {
   attackType: UnitAttackType;
   /** 정보 패널용 상반신 (DOM <img> 경로) */
   bust?: string;
+  /** 작은 위젯에서 원본 버스트를 과도하게 축소하지 않도록 만든 전용 에셋 */
+  ui?: {
+    avatar: string;
+    portrait: string;
+  };
   /** 공격 모션 스프라이트 시트 (가로 1행, 프레임 0 = 대기) */
   attack?: {
     url: string;
@@ -78,6 +83,12 @@ export const UNIT_ART_PROFILE: Record<string, UnitArtProfile> = {
   dr3: { bodyType: "air", attackType: "ranged", attackMotion: "헬기 상공 광역 사격" },
   dm3: { bodyType: "ground", attackType: "melee", attackMotion: "폭약 설치 후 기폭" },
   tf3: { bodyType: "ground", attackType: "melee", attackMotion: "방패 밀치기" },
+  dv4: { bodyType: "ground", attackType: "ranged", attackMotion: "택배 상자 정밀 투척" },
+  pc4: { bodyType: "ground", attackType: "ranged", attackMotion: "지휘 사격" },
+  sn4: { bodyType: "ground", attackType: "ranged", attackMotion: "전자기 가속 저격" },
+  dr4: { bodyType: "air", attackType: "ranged", attackMotion: "해킹 드론 전파 공격" },
+  dm4: { bodyType: "ground", attackType: "melee", attackMotion: "소리 없는 구조물 폭파" },
+  tf4: { bodyType: "ground", attackType: "ranged", attackMotion: "빛나는 결재 도장" },
   fl1: { bodyType: "ground", attackType: "ranged", attackMotion: "전단지 표창 투척" },
   fb1: { bodyType: "ground", attackType: "ranged", attackMotion: "갓 구운 붕어빵 투척" },
   hp1: { bodyType: "air", attackType: "ranged", attackMotion: "비둘기 떼 파견 쪼기" },
@@ -522,6 +533,150 @@ export const UNIT_ART: Record<string, UnitArt> = {
       rate: 8,
     },
   },
+  dv4: {
+    ...UNIT_ART_PROFILE.dv4,
+    bust: "/sprites/rare/dv4_bust.png",
+    ui: {
+      avatar: "/sprites/rare/ui/dv4_avatar_48.png",
+      portrait: "/sprites/rare/ui/dv4_portrait_128.png",
+    },
+    attack: {
+      url: "/sprites/rare/dv4_attack_sheet.png",
+      frameW: 256,
+      frameH: 256,
+      frames: 8,
+      rate: 12,
+    },
+    walk: {
+      front: "/sprites/rare/dv4_walk_front_sheet.png",
+      back: "/sprites/rare/dv4_walk_back_sheet.png",
+      side: "/sprites/rare/dv4_walk_side_sheet.png",
+      frameW: 256,
+      frameH: 256,
+      frames: 8,
+      rate: 10,
+    },
+  },
+  pc4: {
+    ...UNIT_ART_PROFILE.pc4,
+    bust: "/sprites/rare/pc4_bust.png",
+    ui: {
+      avatar: "/sprites/rare/ui/pc4_avatar_48.png",
+      portrait: "/sprites/rare/ui/pc4_portrait_128.png",
+    },
+    attack: {
+      url: "/sprites/rare/pc4_attack_sheet.png",
+      frameW: 256,
+      frameH: 256,
+      frames: 8,
+      rate: 11,
+    },
+    walk: {
+      front: "/sprites/rare/pc4_walk_front_sheet.png",
+      back: "/sprites/rare/pc4_walk_back_sheet.png",
+      side: "/sprites/rare/pc4_walk_side_sheet.png",
+      frameW: 256,
+      frameH: 256,
+      frames: 8,
+      rate: 9,
+    },
+  },
+  sn4: {
+    ...UNIT_ART_PROFILE.sn4,
+    bust: "/sprites/rare/sn4_bust.png",
+    ui: {
+      avatar: "/sprites/rare/ui/sn4_avatar_48.png",
+      portrait: "/sprites/rare/ui/sn4_portrait_128.png",
+    },
+    attack: {
+      url: "/sprites/rare/sn4_attack_sheet.png",
+      frameW: 256,
+      frameH: 256,
+      frames: 8,
+      rate: 9,
+    },
+    walk: {
+      front: "/sprites/rare/sn4_walk_front_sheet.png",
+      back: "/sprites/rare/sn4_walk_back_sheet.png",
+      side: "/sprites/rare/sn4_walk_side_sheet.png",
+      frameW: 256,
+      frameH: 256,
+      frames: 8,
+      rate: 8,
+    },
+  },
+  dr4: {
+    ...UNIT_ART_PROFILE.dr4,
+    bust: "/sprites/rare/dr4_bust.png",
+    ui: {
+      avatar: "/sprites/rare/ui/dr4_avatar_48.png",
+      portrait: "/sprites/rare/ui/dr4_portrait_128.png",
+    },
+    attack: {
+      url: "/sprites/rare/dr4_attack_sheet.png",
+      frameW: 256,
+      frameH: 256,
+      frames: 8,
+      rate: 12,
+    },
+    walk: {
+      front: "/sprites/rare/dr4_walk_front_sheet.png",
+      back: "/sprites/rare/dr4_walk_back_sheet.png",
+      side: "/sprites/rare/dr4_walk_side_sheet.png",
+      frameW: 256,
+      frameH: 256,
+      frames: 8,
+      rate: 10,
+    },
+  },
+  dm4: {
+    ...UNIT_ART_PROFILE.dm4,
+    bust: "/sprites/rare/dm4_bust.png",
+    ui: {
+      avatar: "/sprites/rare/ui/dm4_avatar_48.png",
+      portrait: "/sprites/rare/ui/dm4_portrait_128.png",
+    },
+    attack: {
+      url: "/sprites/rare/dm4_attack_sheet.png",
+      frameW: 256,
+      frameH: 256,
+      frames: 8,
+      rate: 9,
+    },
+    walk: {
+      front: "/sprites/rare/dm4_walk_front_sheet.png",
+      back: "/sprites/rare/dm4_walk_back_sheet.png",
+      side: "/sprites/rare/dm4_walk_side_sheet.png",
+      frameW: 256,
+      frameH: 256,
+      frames: 8,
+      rate: 8,
+    },
+  },
+  tf4: {
+    ...UNIT_ART_PROFILE.tf4,
+    bust: "/sprites/rare/tf4_bust.png",
+    ui: {
+      avatar: "/sprites/rare/ui/tf4_avatar_48.png",
+      portrait: "/sprites/rare/ui/tf4_portrait_128.png",
+    },
+    attack: {
+      url: "/sprites/rare/tf4_attack_sheet.png",
+      frameW: 256,
+      frameH: 256,
+      frames: 8,
+      rate: 10,
+    },
+    walk: {
+      front: "/sprites/rare/tf4_walk_front_sheet.png",
+      back: "/sprites/rare/tf4_walk_back_sheet.png",
+      side: "/sprites/rare/tf4_walk_side_sheet.png",
+      frameW: 256,
+      frameH: 256,
+      frames: 8,
+      rate: 9,
+    },
+  },
   fl1: {
     ...UNIT_ART_PROFILE.fl1,
     bust: "/sprites/fl1_bust.png",
@@ -629,8 +784,11 @@ export function walkKey(unitId: string, dir: WalkDir): string {
  * 에셋 미등록이면 null (호출부가 폴백 담당), 파일 누락이면 자동 숨김.
  */
 export function bustHtml(unitId: string, height: number): string | null {
-  const bust = UNIT_ART[unitId]?.bust;
+  const art = UNIT_ART[unitId];
+  const bust =
+    height <= 48 ? art?.ui?.avatar ?? art?.bust :
+    height <= 128 ? art?.ui?.portrait ?? art?.bust : art?.bust;
   if (!bust) return null;
-  return `<img src="${bust}" alt="" draggable="false" onerror="this.style.display='none'"
+  return `<img src="${bust}" alt="" draggable="false" loading="lazy" onerror="this.style.display='none'"
     style="height:${height}px;image-rendering:pixelated;vertical-align:middle">`;
 }
