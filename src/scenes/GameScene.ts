@@ -48,6 +48,39 @@ import {
   type Mods,
 } from "../data/cards";
 import { sfx } from "../core/sfx";
+import { activeSkill, skillsOf, teamAuraMul } from "../data/skills";
+import {
+  BOOSTER_CAP,
+  BOOSTER_PER_LOSS,
+  CITY_EVENTS,
+  EVENT_CHANCE,
+  EVENT_FISHBREAD_GOLD,
+  EVENT_GOLDEN_COUNT,
+  EVENT_MARKET_DISCOUNT,
+  EVENT_MIN_ROUND,
+  EVENT_RAIN_SLOW,
+  HIDDEN_BASE,
+  JACKPOT_CHANCE,
+  JACKPOT_ROLLS,
+  MUTATOR_CHANCE,
+  MUTATORS,
+  NEAR_MISS_CHANCE,
+  PITY_LIMIT,
+  PITY_MIN_ROUND,
+  STREAK_WINDOW_MS,
+  streakGoldMul,
+} from "../data/events";
+import { ACHIEVEMENT_BY_ID, ACHIEVEMENTS } from "../data/achievements";
+import { initStocks, tickStocks, type StockState } from "../data/stocks";
+import {
+  addAchievement,
+  loadAchievements,
+  loadBooster,
+  loadCounters,
+  saveBooster,
+  saveCounters,
+  type Counters,
+} from "../core/save";
 import { addDex, loadDex, loadStory, saveStory, updateRecords } from "../core/save";
 import {
   STORY_POS,
@@ -109,6 +142,28 @@ export class GameScene extends Phaser.Scene {
     return this.gameTime % (p * 2) < p;
   }
   private mods: Mods = defaultMods();
+  // 액티브 스킬의 아군 전체 버프 (총동원령 등)
+  private teamBuffUntil = 0;
+  private teamBuffCdMul = 1;
+  private teamBuffAtkMul = 1;
+
+  // ---------- 도파민 시스템 (v3.9 — 수치는 data/events.ts) ----------
+  private streak = 0; // 🔥 킬 스트릭
+  private lastKillAt = -1e9;
+  private maxStreak = 0;
+  private killsThisTick = 0; // 동시 처치 토스트용
+  private toastCoolUntil = 0;
+  private pity = 0; // 🎰 천장 — 전설 못 본 뽑기 수 (21R+)
+  private roundGoldMul = 1; // 🎲 변이 라운드
+  private roundSpeedMul = 1;
+  private rainNextRound = false; // 📰 게릴라 소나기
+  private rainThisRound = false;
+  private booster = 0; // 🎟 다음 판 부스터 — 히든 확률 가산 (판 간 유지)
+  private achUnlocked = new Set<string>(); // 🏆 업적 (판 간 누적)
+  private counters: Counters = { goldenKills: 0 };
+  private runNewDex = 0; // 이번 판 신규 도감 해금 수 (결과 하이라이트)
+  private stocks: Record<string, StockState> = initStocks(); // 📈 미니 주식 (판 단위)
+  private pendingStockBoost: string | null = null; // 속보·러시아워 연동 급등 예약
 
   private hpG!: Phaser.GameObjects.Graphics;
   private nightO!: Phaser.GameObjects.Rectangle; // 밤 오버레이 (알파로 낮/밤 연출)
@@ -155,6 +210,30 @@ export class GameScene extends Phaser.Scene {
     this.gameTime = 0;
     this.wasDay = true;
     this.mods = defaultMods();
+    this.teamBuffUntil = 0;
+    this.teamBuffCdMul = 1;
+    this.teamBuffAtkMul = 1;
+    this.streak = 0;
+    this.lastKillAt = -1e9;
+    this.maxStreak = 0;
+    this.killsThisTick = 0;
+    this.toastCoolUntil = 0;
+    this.pity = 0;
+    this.roundGoldMul = 1;
+    this.roundSpeedMul = 1;
+    this.rainNextRound = false;
+    this.rainThisRound = false;
+    this.runNewDex = 0;
+    this.stocks = initStocks();
+    this.pendingStockBoost = null;
+    void loadAchievements().then((a) => (this.achUnlocked = new Set(a)));
+    void loadCounters().then((c) => (this.counters = c));
+    void loadBooster().then((b) => {
+      this.booster = b;
+      if (b > 0) {
+        this.hud.message(`🎟 위로 쿠폰 발동 — 이번 판 히든 확률 +${Math.round(b * 100)}%p`);
+      }
+    });
 
     this.loop = new PathLoop([
       { x: TRACK.left, y: TRACK.top },
@@ -185,9 +264,12 @@ export class GameScene extends Phaser.Scene {
         if (!this.over) this.userPaused = !this.userPaused;
         return this.userPaused;
       },
-      () => this.giveUp()
+      () => this.giveUp(),
+      () => this.castActive(),
+      (stockId, n) => this.tradeStock(stockId, n)
     );
     this.refreshRecipes();
+    this.hud.stocksRender(this.stocks, this.gold);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.hud.destroy());
 
     this.wave = new WaveSystem({
@@ -195,6 +277,22 @@ export class GameScene extends Phaser.Scene {
       // 황금 비둘기는 라운드 종료·수용 한계 계산에서 제외
       mobCount: () => this.mobs.filter((m) => !m.golden).length,
       roundStart: (round, boss) => {
+        // 📰 소나기 예약 소진 + 🎲 변이 라운드 (비보스 · 보너스만)
+        this.rainThisRound = this.rainNextRound;
+        this.rainNextRound = false;
+        this.roundGoldMul = 1;
+        this.roundSpeedMul = 1;
+        if (this.rainThisRound) {
+          this.hud.message(`🌧 게릴라 소나기 — 몹 이동속도 -${EVENT_RAIN_SLOW * 100}%`);
+        }
+        if (!boss && Math.random() < MUTATOR_CHANCE) {
+          const mu = MUTATORS[Math.floor(Math.random() * MUTATORS.length)];
+          this.roundGoldMul = mu.goldMul;
+          this.roundSpeedMul = mu.speedMul;
+          if (mu.id === "rush") this.pendingStockBoost = "rider"; // 🛵 배달로켓 연동
+          this.hud.message(`${mu.name} — ${mu.desc}`);
+          sfx.card();
+        }
         if (boss) {
           const b = bossStats(round);
           this.hud.message(`라운드 ${round} — 보스 [${b.name}] 등장!`);
@@ -204,8 +302,33 @@ export class GameScene extends Phaser.Scene {
         }
       },
       roundClear: (round) => {
-        this.gold += roundClearBonus(round);
+        // 예산 배정 (tf4 패시브): 필드 존재 시 클리어 골드 배율
+        let mul = 1;
+        for (const u of this.units) {
+          for (const s of skillsOf(u.def.id)) {
+            if (s.roundClearGoldMul) mul *= s.roundClearGoldMul;
+          }
+        }
+        this.gold += Math.round(roundClearBonus(round) * mul);
         if (CARD_ROUNDS.has(round) && !this.over) this.offerCards();
+        // 📰 속보 이벤트 — 보너스만, 낮은 빈도 (data/events.ts)
+        if (round >= EVENT_MIN_ROUND && !this.over && Math.random() < EVENT_CHANCE) {
+          this.fireCityEvent();
+        }
+        // 📈 주식 시세 갱신 — 속보·러시아워 연동 급등 반영
+        if (!this.over) {
+          const alerts = tickStocks(this.stocks, this.pendingStockBoost);
+          this.pendingStockBoost = null;
+          if (alerts.length > 0) {
+            const a = alerts[0];
+            this.hud.message(
+              `${a.pct > 0 ? "📈" : "📉"} ${a.def.icon} ${a.def.name} ${
+                a.pct > 0 ? "급등" : "급락"
+              } ${a.pct > 0 ? "+" : ""}${Math.round(a.pct * 100)}%!`
+            );
+          }
+          this.hud.stocksRender(this.stocks, this.gold);
+        }
       },
       message: (t) => this.hud.message(t),
       defeat: (reason) => this.gameOver(false, reason),
@@ -291,13 +414,30 @@ export class GameScene extends Phaser.Scene {
       this.hud.message(
         day ? "☀ 아침이 밝았다 — 낮 유닛 강화!" : "🌙 밤이 찾아왔다 — 밤 유닛 강화!"
       );
+      // 지하철 출근 (tf5 패시브): 낮 시작 시 골드
+      if (day) {
+        let bonus = 0;
+        for (const u of this.units) {
+          for (const s of skillsOf(u.def.id)) {
+            if (s.dayStartGold) bonus += s.dayStartGold;
+          }
+        }
+        if (bonus > 0) {
+          this.gold += bonus;
+          this.hud.message(`🚇 지하철 출근 — 골드 +${bonus}`);
+        }
+      }
     }
 
     this.wave.update(d);
     if (this.over) return;
 
-    for (const m of this.mobs)
-      m.advance(this.gameTime, d, this.mods.mobSpeedMul);
+    this.killsThisTick = 0;
+    const mobSpeedMul =
+      this.mods.mobSpeedMul *
+      this.roundSpeedMul *
+      (this.rainThisRound ? 1 - EVENT_RAIN_SLOW : 1);
+    for (const m of this.mobs) m.advance(this.gameTime, d, mobSpeedMul);
 
     // 황금 비둘기: 트랙 1바퀴를 돌면 벌 없이 떠난다
     for (let i = this.mobs.length - 1; i >= 0; i--) {
@@ -309,16 +449,49 @@ export class GameScene extends Phaser.Scene {
       }
     }
 
+    // 도트 (랜섬웨어·좀비 프로세스) — 마법 판정으로 틱마다 차감
+    for (const m of [...this.mobs]) {
+      if (!m.dead && m.dotDps > 0 && this.gameTime < m.dotUntil) {
+        this.damage(m, (m.dotDps * d) / 1000, "magic");
+      }
+    }
+
+    // 필드 오라 — 유닛 계열별 배율을 틱마다 1회 계산 (skills.ts와 공유 수식)
+    const teamIds = this.units.map((u) => u.def.id);
+    const auraCache = new Map<string, { atkMul: number; cdMul: number }>();
+    const teamBuffed = this.gameTime < this.teamBuffUntil;
     const ctx: CombatCtx = {
       now: this.gameTime,
       isDay: day,
+      round: this.wave.round,
+      death: this.death,
+      allyCount: this.units.length,
       mobs: this.mobs,
-      cdMul: this.mods.cdMul,
+      cdMul: this.mods.cdMul * (teamBuffed ? this.teamBuffCdMul : 1),
       rangeMul: this.mods.rangeMul,
-      damage: (m, a, t) => this.damage(m, a, t),
+      hasAllyFamily: (f) =>
+        this.units.some((u) =>
+          f === "common" ? u.def.grade === "common" : u.def.family === f
+        ),
+      aura: (family) => {
+        const key = family ?? "-";
+        let v = auraCache.get(key);
+        if (!v) {
+          v = teamAuraMul(teamIds, family);
+          auraCache.set(key, v);
+        }
+        return v;
+      },
+      damage: (m, a, t, kg) => this.damage(m, a, t, kg),
       flash: (x1, y1, x2, y2, color) => this.flash(x1, y1, x2, y2, color),
     };
     for (const u of this.units) u.update(ctx, d);
+
+    // 💥 동시 처치 아나운서 — 한 틱에 다수 처치 (쿨다운으로 스팸 방지)
+    if (this.killsThisTick >= 6 && this.gameTime > this.toastCoolUntil) {
+      this.toastCoolUntil = this.gameTime + 4000;
+      this.hud.message(`💥 동시 처치 ${this.killsThisTick}!`);
+    }
 
     // 📖 스토리 존 — 도착 시 파견 / 파견 유닛의 DPS로 보스 HP 차감
     if (this.pendingDispatch) {
@@ -336,7 +509,10 @@ export class GameScene extends Phaser.Scene {
         p !== undefined && (p === "both" || (p === "day") === day)
           ? PHASE_BUFF
           : 1;
-      this.storyHp -= ((def.atk / def.cooldown) * buff * d) / 1000;
+      // 서버 상주 (t3 패시브): 스토리 존 파견 DPS 배율
+      const storyMul =
+        skillsOf(def.id).find((s) => s.storyDpsMul)?.storyDpsMul ?? 1;
+      this.storyHp -= ((def.atk / def.cooldown) * buff * storyMul * d) / 1000;
       if (this.storyHp <= 0) this.clearStoryChapter();
     }
     if (this.storyLoaded) {
@@ -354,7 +530,7 @@ export class GameScene extends Phaser.Scene {
     this.drawHpBars();
     this.hud.update({
       round: this.wave.round,
-      roundMax: ROUND_MAX,
+      roundMax: this.wave.endless ? Infinity : ROUND_MAX,
       timeLeft: this.wave.timeLeftSec,
       state: this.wave.state,
       mobs: this.mobs.length,
@@ -366,6 +542,73 @@ export class GameScene extends Phaser.Scene {
       phaseLeft: Math.ceil(
         (PHASE_SEC * 1000 - (this.gameTime % (PHASE_SEC * 1000))) / 1000
       ),
+      streak: this.gameTime - this.lastKillAt <= STREAK_WINDOW_MS ? this.streak : 0,
+      pityLeft:
+        this.wave.round >= PITY_MIN_ROUND ? Math.max(0, PITY_LIMIT - this.pity) : null,
+    });
+  }
+
+  /** 📰 속보 이벤트 — 전부 보너스, 페널티 없음 (황금 비둘기 원칙) */
+  private fireCityEvent(): void {
+    const ev = CITY_EVENTS[Math.floor(Math.random() * CITY_EVENTS.length)];
+    switch (ev.id) {
+      case "rain":
+        this.rainNextRound = true;
+        break;
+      case "fishbread":
+        this.gold += EVENT_FISHBREAD_GOLD;
+        this.pendingStockBoost = "fish"; // 🐟 붕어빵F&B 연동
+        break;
+      case "goldenFlock":
+        for (let i = 0; i < EVENT_GOLDEN_COUNT; i++) {
+          this.mobs.push(
+            new Mob(this, this.loop, goldenStats(Math.max(1, this.wave.round)), i * 40)
+          );
+        }
+        break;
+      case "nightMarket":
+        this.mods.gachaDiscount += EVENT_MARKET_DISCOUNT;
+        break;
+    }
+    this.hud.message(`📰 속보! ${ev.name} — ${ev.desc}`);
+    sfx.card();
+  }
+
+  /** 📈 주식 매매 — n > 0 매수 / n < 0 매도 (-999 = 전량) */
+  private tradeStock(stockId: string, n: number): void {
+    if (this.over) return;
+    const st = this.stocks[stockId];
+    if (!st) return;
+    if (n > 0) {
+      const cost = st.price * n;
+      if (this.gold < cost) {
+        this.hud.message("골드가 부족합니다");
+        return;
+      }
+      this.gold -= cost;
+      st.avgCost = (st.avgCost * st.shares + cost) / (st.shares + n);
+      st.shares += n;
+    } else {
+      const sell = n === -999 ? st.shares : Math.min(st.shares, -n);
+      if (sell <= 0) return;
+      const gain = st.price * sell;
+      this.gold += gain;
+      st.shares -= sell;
+      if (st.shares === 0) st.avgCost = 0;
+      const profit = Math.round((st.price - st.avgCost) * sell);
+      if (profit > 0) this.hud.message(`📈 익절 +${profit}G!`);
+      else if (profit < 0) this.hud.message(`📉 손절 ${profit}G…`);
+    }
+    sfx.card();
+    this.hud.stocksRender(this.stocks, this.gold);
+  }
+
+  /** 🏆 업적 달성 (판 간 누적 — 신규일 때만 토스트) */
+  private unlock(id: string): void {
+    if (this.achUnlocked.has(id)) return;
+    this.achUnlocked.add(id);
+    void addAchievement(id).then((fresh) => {
+      if (fresh) this.hud.message(`🏆 업적 달성 — ${ACHIEVEMENT_BY_ID[id].name}!`);
     });
   }
 
@@ -392,15 +635,34 @@ export class GameScene extends Phaser.Scene {
     return mob;
   }
 
-  private damage(m: Mob, amount: number, type: DmgType): void {
-    if (this.over || m.dead) return;
+  private damage(m: Mob, amount: number, type: DmgType, killGoldMul = 1): boolean {
+    if (this.over || m.dead) return false;
     amount *= this.mods.atkMul;
     amount *= type === "phys" ? this.mods.physMul : this.mods.magicMul;
+    if (this.gameTime < this.teamBuffUntil) amount *= this.teamBuffAtkMul;
+    amount *= m.takenMul(this.gameTime); // 스킬 마킹 — 받는 피해 증가
     if (type === "phys") {
       amount *= 1 - armorReduction(m.effArmor(this.gameTime));
     }
+    const preHp = m.hp;
     if (m.hit(amount)) {
-      this.gold += m.gold;
+      // 🔥 킬 스트릭 — 짧은 간격 연속 처치 시 골드 보너스 (data/events.ts)
+      this.streak =
+        this.gameTime - this.lastKillAt <= STREAK_WINDOW_MS ? this.streak + 1 : 1;
+      this.lastKillAt = this.gameTime;
+      this.maxStreak = Math.max(this.maxStreak, this.streak);
+      if (this.streak >= 20) this.unlock("streak-20");
+      this.killsThisTick++;
+      // 골드: 처치 배율(스킬) × 스트릭 × 변이 라운드
+      this.gold += Math.round(
+        m.gold * killGoldMul * streakGoldMul(this.streak) * this.roundGoldMul
+      );
+      if (m.golden) {
+        this.counters.goldenKills++;
+        if (this.counters.goldenKills >= 10) this.unlock("golden-10");
+      }
+      // 💥 오버킬 — 남은 HP의 3배 이상 한 방 (연출만, 보상 없음)
+      const overkill = amount >= preHp * 3 && preHp > 0;
       this.kills++;
       const i = this.mobs.indexOf(m);
       if (i >= 0) this.mobs.splice(i, 1);
@@ -426,12 +688,14 @@ export class GameScene extends Phaser.Scene {
         }
       }
       const wasBoss = m.isBoss;
-      this.killPop(m.x, m.y, wasBoss);
+      this.killPop(m.x, m.y, wasBoss, overkill);
       m.destroy();
       sfx.kill();
       if (wasBoss) {
-        // 🎟 보스 처치 보상: 라운드에 맞는 등급 소환권
-        const g = BOSS_TICKET[this.wave.round];
+        // 🎟 보스 처치 보상: 라운드에 맞는 등급 소환권 (♾ 무한 보스 = 전설)
+        const g =
+          BOSS_TICKET[this.wave.round] ??
+          (this.wave.round > ROUND_MAX ? "legendary" : undefined);
         if (g) {
           this.tickets[g] = (this.tickets[g] ?? 0) + 1;
           this.hud.message(`🎟 ${GRADE_NAME[g]} 소환권 획득!`);
@@ -439,21 +703,68 @@ export class GameScene extends Phaser.Scene {
         }
         this.wave.notifyBossKilled();
       }
+      return true;
     }
+    return false;
   }
 
-  private killPop(x: number, y: number, boss: boolean): void {
+  /** ⚡ 액티브 스킬 발동 — 단일 선택 유닛의 액티브 (HUD 버튼) */
+  private castActive(): void {
+    if (this.over || this.halted) return;
+    if (this.selectedUnits.length !== 1) return;
+    const u = this.selectedUnits[0];
+    const act = activeSkill(u.def.id);
+    if (!act) return;
+    const now = this.gameTime;
+    if (now < u.activeReadyAt) {
+      const left = Math.ceil((u.activeReadyAt - now) / 1000);
+      this.hud.message(`⏳ ${act.name} — ${left}초 후 사용 가능`);
+      return;
+    }
+    u.activeReadyAt = now + (act.cooldownSec ?? 60) * 1000;
+    if (act.freezeMs) {
+      for (const m of this.mobs) m.applyStun(act.freezeMs, now);
+    }
+    if (act.teamMs && (act.teamCdMul !== undefined || act.teamAtkMul !== undefined)) {
+      this.teamBuffUntil = now + act.teamMs;
+      this.teamBuffCdMul = act.teamCdMul ?? 1;
+      this.teamBuffAtkMul = act.teamAtkMul ?? 1;
+    }
+    if (act.selfMs && act.selfCdMul !== undefined) {
+      u.applyBuff(now, act.selfMs, act.selfCdMul);
+    }
+    this.cameras.main.flash(300, 140, 230, 255);
+    sfx.alarm();
+    this.hud.message(`⚡ ${act.name} 발동!`);
+  }
+
+  private killPop(x: number, y: number, boss: boolean, overkill = false): void {
     const c = this.add
-      .circle(x, y, boss ? 14 : 6, 0xffd166)
+      .circle(x, y, boss ? 14 : overkill ? 10 : 6, 0xffd166)
       .setDepth(9)
       .setAlpha(0.9);
     this.tweens.add({
       targets: c,
-      scale: boss ? 3 : 2,
+      scale: boss ? 3 : overkill ? 2.6 : 2,
       alpha: 0,
-      duration: boss ? 300 : 160,
+      duration: boss ? 300 : overkill ? 260 : 160,
       onComplete: () => c.destroy(),
     });
+    // 💥 오버킬 팡파레 — 코인이 튀어오른다 (연출만)
+    if (overkill || boss) {
+      for (let i = 0; i < (boss ? 6 : 3); i++) {
+        const coin = this.add.circle(x, y, 4, 0xffd700).setDepth(9);
+        this.tweens.add({
+          targets: coin,
+          x: x + (Math.random() - 0.5) * 70,
+          y: y - 30 - Math.random() * 40,
+          alpha: 0,
+          duration: 380 + Math.random() * 160,
+          ease: "Cubic.easeOut",
+          onComplete: () => coin.destroy(),
+        });
+      }
+    }
   }
 
   private flash(
@@ -500,23 +811,40 @@ export class GameScene extends Phaser.Scene {
     if (this.units.length >= MAX_UNITS) return false;
     const def = defGetter();
     const pos = this.randomSpawnPos();
-    const unit = new Unit(this, def, pos.x, pos.y, (u) =>
-      this.selectUnits([u])
-    );
-    this.units.push(unit);
+    this.addUnit(def, pos.x, pos.y);
     this.hud.message(def.hidden ? `✨ 히든! ${def.name} 획득!` : `${def.name} 획득!`);
     this.refreshRecipes();
     return true;
   }
 
-  /** 뽑기: 흔함은 덱 3종에서, 6% 확률로 히든. 상위 등급은 기존 풀 */
+  /** 뽑기: 흔함은 덱 3종에서, 히든 확률 = 기본 6% + 위로 쿠폰. 🎰 천장(50연속)이면 전설 확정 */
   private rollUnit(): UnitDef {
-    const grade = rollGrade(this.wave.round);
+    let grade = rollGrade(this.wave.round);
+    if (this.wave.round >= PITY_MIN_ROUND && this.pity >= PITY_LIMIT) {
+      grade = "legendary"; // 천장 발동
+    }
     if (grade !== "common") return randomUnitOfGrade(grade);
-    if (Math.random() < 0.06) {
+    if (Math.random() < HIDDEN_BASE + this.booster) {
       return UNIT_BY_ID[HIDDEN_IDS[Math.floor(Math.random() * HIDDEN_IDS.length)]];
     }
     return UNIT_BY_ID[this.deck[Math.floor(Math.random() * this.deck.length)]];
+  }
+
+  /** 뽑기 1회 사후 처리 — 천장 카운트 + 등급 컷인/니어미스 연출 */
+  private afterGachaRoll(def: UnitDef): void {
+    if (def.grade === "legendary") {
+      if (this.pity >= PITY_LIMIT) this.hud.message("🎰 천장 도달 — 전설 확정!");
+      this.pity = 0;
+    } else if (this.wave.round >= PITY_MIN_ROUND) {
+      this.pity++;
+    }
+    if (def.grade === "special" || def.grade === "rare" || def.grade === "legendary") {
+      // 니어미스: 특별함/희귀함 결과에 한 등급 위 색이 스쳤다 떨어진다 (연출만 — 확률 왜곡 없음)
+      const up = nextGrade(def.grade);
+      const nearMiss =
+        def.grade !== "legendary" && up && Math.random() < NEAR_MISS_CHANCE ? up : undefined;
+      this.hud.gachaCutIn(def.grade, def.name, nearMiss);
+    }
   }
 
   private gacha(): void {
@@ -526,12 +854,33 @@ export class GameScene extends Phaser.Scene {
       this.hud.message("골드가 부족합니다");
       return;
     }
-    if (!this.placeNewUnit(() => this.rollUnit())) {
+    const def = this.rollUnit();
+    if (!this.placeNewUnit(() => def)) {
       this.hud.message("부대가 가득 찼습니다 — 조합으로 정리하세요");
       return;
     }
     this.gold -= cost;
     sfx.gacha();
+    this.afterGachaRoll(def);
+
+    // 🎰 연쇄 뽑기 잭팟 — 낮은 확률로 무료 뽑기가 연달아 터진다
+    if (Math.random() < JACKPOT_CHANCE) {
+      const n =
+        JACKPOT_ROLLS[0] +
+        Math.floor(Math.random() * (JACKPOT_ROLLS[1] - JACKPOT_ROLLS[0] + 1));
+      let got = 0;
+      for (let i = 0; i < n; i++) {
+        const free = this.rollUnit();
+        if (!this.placeNewUnit(() => free)) break;
+        this.afterGachaRoll(free);
+        got++;
+      }
+      if (got > 0) {
+        this.hud.message(`🎰 서비스!! 무료 뽑기 ${got}회!`);
+        this.cameras.main.flash(250, 255, 215, 0);
+        sfx.power();
+      }
+    }
   }
 
   // ---------- 카드 ----------
@@ -770,8 +1119,13 @@ export class GameScene extends Phaser.Scene {
 
     if (!this.dex.has(key)) {
       this.dex.add(key);
+      this.runNewDex++;
       void addDex(key);
-      this.hud.message(`✨ 새 캐릭터 해금! [${GRADE_NAME[def.grade]}] ${def.name}`);
+      this.hud.message(`✨ 새 캐릭터 해금! [${GRADE_NAME[def.grade]}] ${def.name} (도감 ${this.dex.size}/220)`);
+      // 🏆 도감 마일스톤
+      if (this.dex.size >= 50) this.unlock("dex-50");
+      if (this.dex.size >= 110) this.unlock("dex-110");
+      if (this.dex.size >= 220) this.unlock("dex-220");
     } else {
       this.hud.message(`${def.name} 조합!`);
     }
@@ -949,7 +1303,10 @@ export class GameScene extends Phaser.Scene {
             .filter((r) => r.key.split("+").includes(unit.def.id))
             .sort((a, b) => Number(b.ok) - Number(a.ok))
         : [];
-    this.hud.unitInfo(unit.def, sameCount, related);
+    const activeCdLeft = activeSkill(unit.def.id)
+      ? Math.max(0, Math.ceil((unit.activeReadyAt - this.gameTime) / 1000))
+      : 0;
+    this.hud.unitInfo(unit.def, sameCount, related, activeCdLeft);
   }
 
   /** 우클릭 이동 명령 — 적군 경로(트랙) 안쪽으로만 이동 가능 */
@@ -1007,6 +1364,9 @@ export class GameScene extends Phaser.Scene {
   private addUnit(def: UnitDef, x: number, y: number): Unit {
     const unit = new Unit(this, def, x, y, (u) => this.selectUnits([u]));
     this.units.push(unit);
+    // 🏆 획득 업적 (뽑기·조합·합성·소환 공통)
+    if (def.grade === "legendary") this.unlock("first-legendary");
+    if (def.grade === "transcendent") this.unlock("first-transcendent");
     return unit;
   }
 
@@ -1044,15 +1404,58 @@ export class GameScene extends Phaser.Scene {
     else sfx.lose();
 
     const round = this.wave.round;
-    void updateRecords(win, round).then((records) => {
-      const desc = `${reason}\n라운드 ${round} · 처치 ${this.kills} · 최고 라운드 ${records.bestRound}`;
+    const endless = this.wave.endless;
+
+    // 🏆 판 종료 업적 + 통계 저장
+    if (win && !endless) {
+      if (this.difficulty === "normal" || this.difficulty === "hard") this.unlock("win-normal");
+      if (this.difficulty === "hard") this.unlock("win-hard");
+      if (this.death >= DEATH_START) this.unlock("nodeath-win");
+    }
+    if (endless && round >= 50) this.unlock("endless-50");
+    if (endless && round > 60) this.unlock("endless-60");
+    void saveCounters(this.counters);
+
+    // 🎟 다음 판 부스터 — 정규 패배 시 히든 확률 적립, 승리 시 리셋
+    if (!endless) {
+      this.booster = win
+        ? 0
+        : Math.min(BOOSTER_CAP, this.booster + BOOSTER_PER_LOSS);
+      void saveBooster(this.booster);
+    }
+
+    // ♾ 무한 모드 종료: 40R 승리에서 이미 집계됨 — 최고 라운드만 갱신
+    void updateRecords(win, round, !endless).then((records) => {
+      const highlights = [
+        `라운드 ${round} · 처치 ${this.kills} · 최고 라운드 ${records.bestRound}`,
+        `📘 이번 판 신규 해금 ${this.runNewDex}종 — 도감 ${this.dex.size}/220 · 🏆 업적 ${this.achUnlocked.size}/${ACHIEVEMENTS.length}`,
+      ];
+      if (this.maxStreak >= 5) highlights.push(`🔥 최대 스트릭 ${this.maxStreak}`);
+      if (!win && !endless && this.booster > 0) {
+        highlights.push(`🎟 위로 쿠폰 — 다음 판 히든 확률 +${Math.round(this.booster * 100)}%p`);
+      }
+      const desc = `${reason}\n${highlights.join("\n")}`;
       this.hud.result(
         win,
         desc,
         () =>
           this.scene.restart({ deck: this.deck, difficulty: this.difficulty }),
-        () => this.scene.start("title")
+        () => this.scene.start("title"),
+        {
+          endlessRound: endless ? round : undefined,
+          // 40R 정규 승리에서만 무한 모드 제안
+          onEndless:
+            win && round === ROUND_MAX ? () => this.continueEndless() : undefined,
+        }
       );
     });
+  }
+
+  /** ♾ 무한 모드 재개 — 승리 화면에서 계속하기 */
+  private continueEndless(): void {
+    this.over = false;
+    this.wave.resumeEndless();
+    sfx.alarm();
+    this.hud.message("♾ 무한 모드 — 하찮은 것들의 침공은 끝나지 않는다");
   }
 }

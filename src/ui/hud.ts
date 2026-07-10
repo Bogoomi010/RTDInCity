@@ -20,7 +20,30 @@ function matsHtml(key: string, mats: string[]): string {
     .join(" + ");
 }
 import type { CardDef } from "../data/cards";
+import { skillsOf } from "../data/skills";
+import { sparkline, STOCKS, type StockState } from "../data/stocks";
 import { settingsUI } from "./settings";
+
+/** 스킬 목록 렌더 — ◆패시브 ✦공격 ⚡액티브 (GDD 1.7) */
+function skillsHtml(unitId: string): string {
+  const skills = skillsOf(unitId);
+  if (skills.length === 0) return "";
+  const icon = { passive: "◆", attack: "✦", active: "⚡" } as const;
+  const color = { passive: "#8f96a3", attack: "#ffd166", active: "#26c6da" } as const;
+  return `
+    <div class="crowtitle">스킬</div>
+    ${skills
+      .map(
+        (s) => `
+          <div style="font-size:12px;line-height:1.35;margin:1px 0">
+            <b style="color:${color[s.kind]}">${icon[s.kind]} ${s.name}</b>
+            <span style="color:#aab1bd"> — ${s.desc}</span>
+          </div>
+        `
+      )
+      .join("")}
+  `;
+}
 
 export interface ComboRow {
   key: string;
@@ -45,6 +68,8 @@ export interface HudSnapshot {
   gachaCost: number;
   isDay: boolean;
   phaseLeft: number; // 다음 낮/밤 전환까지 남은 초
+  streak: number; // 🔥 킬 스트릭 (활성 아닐 땐 0)
+  pityLeft: number | null; // 🎰 천장까지 남은 뽑기 수 (전설 풀 구간 전엔 null)
 }
 
 export class Hud {
@@ -60,7 +85,9 @@ export class Hud {
     onRecall: () => void, // 스토리 존 파견 유닛 회수
     onSpeed: () => number, // 클릭 시 배속 순환, 새 배속 반환
     onPause: () => boolean, // 클릭 시 토글, 정지 여부 반환
-    onGiveUp: () => void // 설정 → 포기하기 (재확인 후 타이틀로)
+    onGiveUp: () => void, // 설정 → 포기하기 (재확인 후 타이틀로)
+    private onActive: () => void = () => {}, // ⚡ 선택 유닛의 액티브 스킬 발동
+    private onStockTrade: (stockId: string, n: number) => void = () => {} // 📈 n>0 매수 / n<0 매도 (-999 전량)
   ) {
     this.root = document.getElementById("ui")!;
     this.root.innerHTML = `
@@ -71,6 +98,7 @@ export class Hud {
         <span class="stat">몹 <b id="h-mobs">0/50</b></span>
         <span class="stat">데스 <b id="h-death">10</b></span>
         <span class="stat">💰 <b id="h-gold">0</b></span>
+        <span class="stat" id="h-streak" style="display:none;color:#ff8f4d">🔥 <b id="h-streakv"></b></span>
         <span style="flex:1"></span>
         <button class="gearbtn" id="h-pause" title="일시정지">⏸</button>
         <button class="gearbtn" id="h-speed" title="배속">x1</button>
@@ -78,6 +106,7 @@ export class Hud {
       </div>
       <div id="panel">
         <button class="big" id="h-gacha">유닛 뽑기 — ${GACHA_COST}G</button>
+        <div id="h-pity" style="display:none;font-size:11px;color:#8f96a3;text-align:center;margin-top:-4px"></div>
         <div id="unitInfo"></div>
         <div id="tickets"></div>
         <div id="story">
@@ -88,6 +117,7 @@ export class Hud {
           <button class="rbtn" id="st-recall" style="display:none">회수</button>
         </div>
         <button class="big" id="h-book">📖 조합법</button>
+        <button class="big" id="h-stocks">📈 증권거래소</button>
       </div>
       <div id="picker"></div>
       <div id="book">
@@ -96,6 +126,16 @@ export class Hud {
           <div class="btabs" id="btabs"></div>
           <div id="blist"></div>
           <button class="big" id="h-bookclose">닫기</button>
+        </div>
+      </div>
+      <div id="stocks-panel" style="display:none">
+        <div class="dpanel">
+          <h2>📈 도시 증권거래소</h2>
+          <div style="font-size:12px;color:#8f96a3;margin-bottom:6px">
+            시세는 라운드 클리어마다 변동 · 판이 끝나면 잔여 주식은 소멸 — 팔아야 내 돈
+          </div>
+          <div id="stock-rows"></div>
+          <button class="big" id="h-stocksclose">닫기</button>
         </div>
       </div>
       <div id="msg"></div>
@@ -144,6 +184,15 @@ export class Hud {
       this.renderBook();
       this.els["book"].style.display = "flex";
     });
+    // 📈 증권거래소
+    const stocksPanel = document.getElementById("stocks-panel")!;
+    document.getElementById("h-stocks")!.addEventListener("click", () => {
+      stocksPanel.style.display = "flex";
+      this.renderStockRows();
+    });
+    document.getElementById("h-stocksclose")!.addEventListener("click", () => {
+      stocksPanel.style.display = "none";
+    });
     document.getElementById("h-bookclose")!.addEventListener("click", () => {
       this.els["book"].style.display = "none";
     });
@@ -165,7 +214,11 @@ export class Hud {
 
   update(s: HudSnapshot): void {
     this.els["h-round"].textContent =
-      s.round <= 0 ? "대기" : `${s.round}/${s.roundMax}`;
+      s.round <= 0
+        ? "대기"
+        : Number.isFinite(s.roundMax)
+          ? `${s.round}/${s.roundMax}`
+          : `${s.round} ♾`;
     this.els["h-time"].textContent =
       s.state === "break" ? `다음 라운드 ${s.timeLeft}s` : `${s.timeLeft}s`;
     this.els["h-phase"].textContent = `${s.isDay ? "☀" : "🌙"} ${s.phaseLeft}s`;
@@ -179,6 +232,72 @@ export class Hud {
     gachaBtn.disabled = s.gold < s.gachaCost;
     const label = `유닛 뽑기 — ${s.gachaCost}G`;
     if (gachaBtn.textContent !== label) gachaBtn.textContent = label;
+    // 🔥 킬 스트릭
+    const streakEl = document.getElementById("h-streak")!;
+    if (s.streak >= 5) {
+      streakEl.style.display = "";
+      document.getElementById("h-streakv")!.textContent = `${s.streak} (골드 +${Math.min(20, s.streak)}%)`;
+    } else {
+      streakEl.style.display = "none";
+    }
+    // 🎰 천장 카운터
+    const pityEl = document.getElementById("h-pity")!;
+    if (s.pityLeft !== null) {
+      pityEl.style.display = "";
+      pityEl.textContent =
+        s.pityLeft === 0 ? "🎰 천장 도달 — 다음 뽑기 전설 확정!" : `천장까지 ${s.pityLeft}회`;
+    } else {
+      pityEl.style.display = "none";
+    }
+  }
+
+  // ---------- 📈 미니 주식 ----------
+
+  private stockData: { stocks: Record<string, StockState>; gold: number } | null = null;
+
+  /** 시세·보유 갱신 (GameScene가 라운드 틱·매매 후 호출) — 패널이 열려 있을 때만 다시 그린다 */
+  stocksRender(stocks: Record<string, StockState>, gold: number): void {
+    this.stockData = { stocks, gold };
+    const panel = document.getElementById("stocks-panel");
+    if (panel && panel.style.display === "flex") this.renderStockRows();
+  }
+
+  private renderStockRows(): void {
+    if (!this.stockData) return;
+    const { stocks, gold } = this.stockData;
+    const rows = document.getElementById("stock-rows")!;
+    rows.innerHTML = STOCKS.map((def) => {
+      const st = stocks[def.id];
+      const prev = st.history.length > 1 ? st.history[st.history.length - 2] : st.price;
+      const chg = ((st.price - prev) / prev) * 100;
+      // 한국식 색: 상승 빨강 / 하락 파랑
+      const chgColor = chg > 0 ? "#e25b5b" : chg < 0 ? "#5b8de2" : "#8f96a3";
+      const profit = st.shares > 0 ? Math.round((st.price - st.avgCost) * st.shares) : 0;
+      const profitColor = profit >= 0 ? "#e25b5b" : "#5b8de2";
+      return `
+        <div class="srow">
+          <div class="sname">${def.icon} ${def.name}<br>
+            <span style="font-weight:400;color:#8f96a3;font-size:11px">${def.desc}</span></div>
+          <div style="width:64px;text-align:right"><b>${st.price}G</b><br>
+            <span style="color:${chgColor};font-size:12px">${chg >= 0 ? "+" : ""}${chg.toFixed(0)}%</span></div>
+          <div class="schart">${sparkline(st.history)}</div>
+          <div style="flex:1;text-align:right;font-size:12px;color:#b8bcc4">${st.shares}주${
+            st.shares > 0
+              ? `<br><span style="color:${profitColor}">${profit >= 0 ? "+" : ""}${profit}G</span>`
+              : ""
+          }</div>
+          <button class="sbtn" data-t="${def.id}:1" ${gold < st.price ? "disabled" : ""}>매수</button>
+          <button class="sbtn" data-t="${def.id}:5" ${gold < st.price * 5 ? "disabled" : ""}>×5</button>
+          <button class="sbtn" data-t="${def.id}:-999" ${st.shares === 0 ? "disabled" : ""}>전량 매도</button>
+        </div>
+      `;
+    }).join("");
+    rows.querySelectorAll<HTMLButtonElement>("[data-t]").forEach((b) => {
+      b.addEventListener("click", () => {
+        const [id, n] = b.dataset.t!.split(":");
+        this.onStockTrade(id, Number(n));
+      });
+    });
   }
 
   message(text: string): void {
@@ -191,11 +310,50 @@ export class Hud {
     }, 2200);
   }
 
+  /** 🎰 뽑기 컷인 — 특별함+ 등급 연출. nearMiss = 한 등급 위 색이 스쳤다 떨어지는 연출 (확률 왜곡 없음) */
+  gachaCutIn(grade: Grade, name: string, nearMiss?: Grade): void {
+    const show = (g: Grade, final: boolean) => {
+      const color = GRADE_COLOR_CSS[g];
+      const big = final && (g === "legendary" || g === "transcendent");
+      const el = document.createElement("div");
+      el.style.cssText = `
+        position:fixed;inset:0;pointer-events:none;z-index:60;
+        display:flex;align-items:center;justify-content:center;
+        background:radial-gradient(circle at 50% 45%, ${color}${big ? "55" : "30"} 0%, transparent ${big ? "62%" : "40%"});
+        transition:opacity .3s`;
+      if (final) {
+        const label = document.createElement("div");
+        label.style.cssText = `
+          font-weight:900;color:${color};text-shadow:0 0 18px ${color};
+          font-size:${big ? 44 : 26}px;transform:scale(.7);transition:transform .18s`;
+        label.textContent = `[${GRADE_NAME[g]}] ${name}`;
+        el.appendChild(label);
+        requestAnimationFrame(() => (label.style.transform = "scale(1)"));
+      }
+      document.body.appendChild(el);
+      window.setTimeout(() => {
+        el.style.opacity = "0";
+        window.setTimeout(() => el.remove(), 320);
+      }, final ? (big ? 900 : 550) : 200);
+    };
+    if (nearMiss) {
+      show(nearMiss, false); // 스치는 상위 색
+      window.setTimeout(() => show(grade, true), 230);
+    } else {
+      show(grade, true);
+    }
+  }
+
   /**
    * sameCount: 전설 유닛이면 필드 위 전설 유닛 수 — 전설 2기(종류 무관)로 초월 합성.
    * combos: 흔함 유닛이면 이 유닛이 재료인 조합법 목록 (가능한 조합은 빛나고 클릭 = 조합)
    */
-  unitInfo(unit: UnitDef | null, sameCount: number, combos: ComboRow[] = []): void {
+  unitInfo(
+    unit: UnitDef | null,
+    sameCount: number,
+    combos: ComboRow[] = [],
+    activeCdLeft = 0 // ⚡ 액티브 남은 쿨다운(초) — 선택 시점 기준 표시용
+  ): void {
     const el = this.els["unitInfo"];
     if (!unit) {
       el.innerHTML = `
@@ -224,6 +382,14 @@ export class Hud {
           ? `<div>${
               unit.phase === "both" ? "☀🌙 낮밤 모두" : unit.phase === "day" ? "☀ 낮" : "🌙 밤"
             }에 공격력 +${Math.round((PHASE_BUFF - 1) * 100)}%</div>`
+          : ""
+      }
+      ${skillsHtml(unit.id)}
+      ${
+        skillsOf(unit.id).some((s) => s.kind === "active")
+          ? `<button class="big" id="h-active">⚡ ${
+              skillsOf(unit.id).find((s) => s.kind === "active")!.name
+            }${activeCdLeft > 0 ? ` (${activeCdLeft}초)` : ""}</button>`
           : ""
       }
       ${
@@ -264,6 +430,7 @@ export class Hud {
       }
     `;
     el.querySelector("#h-merge")?.addEventListener("click", this.onMerge);
+    el.querySelector("#h-active")?.addEventListener("click", this.onActive);
     el.querySelectorAll<HTMLButtonElement>("[data-combo]").forEach((btn) => {
       btn.addEventListener("click", () => this.onCombo(btn.dataset.combo!));
     });
@@ -444,13 +611,31 @@ export class Hud {
     win: boolean,
     desc: string,
     onRetry: () => void,
-    onTitle: () => void
+    onTitle: () => void,
+    extra?: { endlessRound?: number; onEndless?: () => void } // ♾ 무한 모드
   ): void {
-    this.els["h-rtitle"].textContent = win ? "승리" : "패배";
+    this.els["h-rtitle"].textContent = extra?.endlessRound
+      ? `♾ 무한 기록 ${extra.endlessRound}R`
+      : win
+        ? "승리"
+        : "패배";
     this.els["h-rdesc"].textContent = desc;
     const retry = this.els["h-retry"] as HTMLButtonElement;
     retry.onclick = onRetry;
     (document.getElementById("h-totitle") as HTMLButtonElement).onclick = onTitle;
+    // 승리(40R) 시에만: 무한 모드 계속하기
+    document.getElementById("h-endless")?.remove();
+    if (extra?.onEndless) {
+      const btn = document.createElement("button");
+      btn.className = "big";
+      btn.id = "h-endless";
+      btn.textContent = "♾ 무한 모드 — 계속 싸운다";
+      btn.onclick = () => {
+        this.els["result"].style.display = "none";
+        extra.onEndless!();
+      };
+      this.els["result"].querySelector("p")!.after(btn);
+    }
     this.els["result"].style.display = "flex";
   }
 

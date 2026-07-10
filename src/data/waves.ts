@@ -21,7 +21,7 @@ export const DIFFICULTY_DEFS: Record<
 > = {
   easy: { name: "쉬움", hpMul: 0.85, desc: "몹 체력 -15% · 입문용" },
   normal: { name: "보통", hpMul: 1.0, desc: "표준 밸런스" },
-  hard: { name: "어려움", hpMul: 1.2, desc: "몹 체력 +20% · 숙련자용" },
+  hard: { name: "어려움", hpMul: 1.25, desc: "몹 체력 +25% · 숙련자용" },
 };
 
 let currentDifficulty: Difficulty = "normal";
@@ -43,6 +43,10 @@ export function mobArmor(round: number): number {
 }
 
 function baseHp(round: number): number {
+  // ♾ 무한 모드 (41R+): 지수 완화 1.21 → 1.13 — 성장이 끝난 팀이 10~20라운드 더 버티는 스코어 어택 곡선
+  if (round > 40) {
+    return Math.round(baseHp(40) * Math.pow(1.13, round - 40));
+  }
   return Math.round(18 * Math.pow(1.21, round - 1));
 }
 
@@ -136,19 +140,20 @@ interface BossDef {
 
 /** 보스 4종 — 라운드별 개성 */
 export const BOSS_DEFS: Record<number, BossDef> = {
-  10: { name: "폭주 덤프트럭", hpMul: 18, armorMul: 1.0, speed: 78, trait: "빠른 이동속도" },
-  20: { name: "장갑 수송차", hpMul: 16, armorMul: 2.0, speed: 45, trait: "높은 방어력 — 마법/방깎 추천" },
-  30: { name: "스텔스 헬기", hpMul: 27, armorMul: 1.5, speed: 62, trait: "빠르고 단단함" },
-  40: { name: "시티 브레이커", hpMul: 23, armorMul: 2.0, speed: 40, trait: "최종 보스" },
+  10: { name: "폭주 덤프트럭", hpMul: 20, armorMul: 1.0, speed: 78, trait: "빠른 이동속도" },
+  20: { name: "장갑 수송차", hpMul: 20, armorMul: 2.0, speed: 45, trait: "높은 방어력 — 마법/방깎 추천" },
+  30: { name: "스텔스 헬기", hpMul: 35, armorMul: 1.5, speed: 62, trait: "빠르고 단단함" },
+  40: { name: "시티 브레이커", hpMul: 30, armorMul: 2.0, speed: 40, trait: "최종 보스" },
 };
 
 export function bossStats(round: number): MobStats {
+  // ♾ 무한 모드 보스 (50R+): 완화된 기본 곡선 기준의 반복 보스
   const def = BOSS_DEFS[round] ?? {
-    name: "보스",
-    hpMul: 35,
+    name: "야근의 화신",
+    hpMul: 24,
     armorMul: 1.5,
-    speed: 45,
-    trait: "",
+    speed: 50,
+    trait: "무한 모드",
   };
   // 계열 배율의 영향을 받지 않도록 기본 공식 사용
   return {

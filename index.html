@@ -259,7 +259,8 @@
       #picker .rbtn:hover {
         background: #3d4b63;
       }
-      #book {
+      #book,
+      #stocks-panel {
         position: absolute;
         inset: 0;
         background: rgba(0, 0, 0, 0.7);
@@ -270,6 +271,49 @@
         z-index: 42;
         color: #e8eaed;
       }
+      #stocks-panel .dpanel {
+        width: 560px;
+        max-height: 84%;
+        background: #1b2130;
+        border: 2px solid #3a4152;
+        border-radius: 14px;
+        padding: 22px 26px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+      #stocks-panel h2 {
+        margin: 0;
+        font-size: 20px;
+      }
+      #stock-rows {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        font-size: 13px;
+      }
+      .srow {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 14px;
+        background: #141926;
+        border: 1px solid #3a4152;
+        border-radius: 8px;
+      }
+      .srow .sname { width: 118px; font-weight: 700; }
+      .srow .schart { font-family: monospace; color: #6fcf97; letter-spacing: 1px; }
+      .srow .sbtn {
+        padding: 5px 9px;
+        border: none;
+        border-radius: 6px;
+        background: #2b3450;
+        color: #fff;
+        font-weight: 700;
+        font-size: 12px;
+        cursor: pointer;
+      }
+      .srow .sbtn:disabled { opacity: 0.4; cursor: default; }
       #book .dpanel {
         width: 620px;
         max-height: 84%;
