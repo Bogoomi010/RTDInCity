@@ -116,22 +116,31 @@ export function openDeckSelect(
   const info = el.querySelector<HTMLElement>("#dk-info")!;
 
   const renderParty = (): void => {
-    const slots: string[] = [];
+    const mainSlots: string[] = [];
     for (let i = 0; i < 3; i++) {
-      slots.push(
+      mainSlots.push(
         picked[i]
           ? `<div class="dkslot filled">${charVisual(picked[i], 40)}</div>`
           : `<div class="dkslot">?</div>`
       );
     }
-    for (const hid of HIDDEN_IDS) {
-      slots.push(
+    const hiddenSlots = HIDDEN_IDS.map(
+      (hid) =>
         `<div class="dkslot hiddenslot" title="${UNIT_BY_ID[hid].name} — 뽑기에서 낮은 확률로 등장">
            ${charVisual(hid, 40)}<span>✨</span>
          </div>`
-      );
-    }
-    party.innerHTML = slots.join("");
+    ).join("");
+    party.innerHTML = `
+      <div class="dkslotGroup">
+        <div class="dkslotLabel">선택 대원</div>
+        <div class="dkslotsMain">${mainSlots.join("")}</div>
+      </div>
+      <div class="dkslotDivider"></div>
+      <div class="dkslotGroup dkhiddenGroup">
+        <div class="dkslotLabel">히든 후보</div>
+        <div class="dkslotsHidden">${hiddenSlots}</div>
+      </div>
+    `;
     startBtn.disabled = picked.length !== 3;
     startBtn.textContent =
       picked.length === 3 ? "▶ 출격!" : `대원 3명을 선택하세요 (${picked.length}/3)`;

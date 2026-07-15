@@ -1170,6 +1170,9 @@ export class GameScene extends Phaser.Scene {
 
   /** 타이틀과 같은 픽셀 도시 스타일 보드 — 전부 사각형만으로 그린다 */
   private drawBoard(): void {
+    this.drawBoardVisualRefresh();
+    return;
+
     this.cameras.main.setBackgroundColor("#12151c"); // 상단바 뒤 배경
 
     const g = this.add.graphics().setDepth(0);
@@ -1263,6 +1266,130 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
+  private drawBoardVisualRefresh(): void {
+    this.cameras.main.setBackgroundColor("#0d111c");
+
+    const g = this.add.graphics().setDepth(0);
+    const P = 4;
+    const L = TRACK.left;
+    const T = TRACK.top;
+    const W = TRACK.right - TRACK.left;
+    const H = TRACK.bottom - TRACK.top;
+
+    g.fillStyle(0x5eb7f0, 1);
+    g.fillRect(0, 52, GAME_W, 68);
+    g.fillStyle(0xaeddf6, 0.72);
+    g.fillRect(0, 92, GAME_W, 28);
+
+    const skyline = [42, 64, 50, 78, 56, 92, 48, 68, 84, 52, 70, 58, 88, 46, 74, 60, 82, 54];
+    let sx = -10;
+    skyline.forEach((bh, i) => {
+      const bw = 44 + ((i * 17) % 36);
+      g.fillStyle(i % 3 === 0 ? 0x9aaec2 : i % 3 === 1 ? 0x8298af : 0xa8bdd2, 1);
+      g.fillRect(sx, 120 - bh, bw, bh);
+      g.fillStyle(0xd8f3ff, 0.55);
+      for (let wx = sx + 8; wx < sx + bw - 8; wx += 16) {
+        g.fillRect(wx, 120 - bh + 12, 6, 6);
+      }
+      sx += bw + P * 2;
+    });
+
+    g.fillStyle(0xd3cec2, 1);
+    g.fillRect(0, 120, GAME_W, GAME_H - 120);
+    g.fillStyle(0xbeb8ad, 0.72);
+    for (let x = 0; x < GAME_W; x += 32) g.fillRect(x, 120, 2, GAME_H - 120);
+    for (let y = 120; y < GAME_H; y += 32) g.fillRect(0, y, GAME_W, 2);
+
+    g.fillStyle(0x07101c, 0.18);
+    g.fillRect(944, 56, 336, GAME_H - 56);
+
+    g.fillStyle(0x08101b, 0.28);
+    g.fillRect(L - 36, T - 20, W + 72, H + 64);
+    g.fillStyle(0x8793a3, 1);
+    g.fillRect(L - 32, T - 32, W + 64, H + 64);
+    g.fillStyle(0x303846, 1);
+    g.fillRect(L - 24, T - 24, W + 48, H + 48);
+    g.fillStyle(0x4a5364, 1);
+    g.fillRect(L + 20, T + 20, W - 40, H - 40);
+    g.fillStyle(0xcfcabe, 1);
+    g.fillRect(L + 28, T + 28, W - 56, H - 56);
+
+    g.lineStyle(2, 0xb7b1a6, 0.42);
+    for (let x = L + 60; x < L + W - 60; x += 48) {
+      g.lineBetween(x, T + 34, x, T + H - 34);
+    }
+    for (let y = T + 60; y < T + H - 60; y += 48) {
+      g.lineBetween(L + 34, y, L + W - 34, y);
+    }
+
+    g.fillStyle(0xf8f3dc, 1);
+    for (let x = L + 8; x < L + W - 18; x += 36) {
+      g.fillRect(x, T - 3, 18, P);
+      g.fillRect(x, T + H - 1, 18, P);
+    }
+    for (let y = T + 8; y < T + H - 18; y += 36) {
+      g.fillRect(L - 3, y, P, 18);
+      g.fillRect(L + W - 1, y, P, 18);
+    }
+
+    g.fillStyle(0xffd166, 0.92);
+    for (let x = L - 24; x < L + 74; x += 20) g.fillRect(x, T - 32, 10, 8);
+    for (let x = L + W - 74; x < L + W + 24; x += 20) g.fillRect(x, T + H + 24, 10, 8);
+
+    for (let col = 0; col < GRID.cols; col++) {
+      for (let row = 0; row < GRID.rows; row++) {
+        const x = GRID.x + col * GRID.cell;
+        const y = GRID.y + row * GRID.cell;
+        const alt = (col + row) % 2 === 0;
+        g.fillStyle(0x07101a, 0.22);
+        g.fillRect(x + 7, y + 9, GRID.cell - 14, GRID.cell - 14);
+        g.fillStyle(alt ? 0x557f4a : 0x4c7445, 1);
+        g.fillRect(x + P, y + P, GRID.cell - P * 2, GRID.cell - P * 2);
+        g.fillStyle(alt ? 0x86b868 : 0x78aa61, 1);
+        g.fillRect(x + P + 3, y + P + 3, GRID.cell - P * 2 - 6, GRID.cell - P * 2 - 6);
+        g.fillStyle(0xb4e28f, 0.75);
+        g.fillRect(x + P + 3, y + P + 3, GRID.cell - P * 2 - 6, P);
+        g.lineStyle(1, 0xe0ffcf, 0.22);
+        g.strokeRect(x + P + 1, y + P + 1, GRID.cell - P * 2 - 2, GRID.cell - P * 2 - 2);
+      }
+    }
+
+    const hx = STORY_POS.x - 28;
+    const hy = STORY_POS.y;
+    g.fillStyle(0x07101a, 0.24);
+    g.fillEllipse(STORY_POS.x, hy + 15, 82, 22);
+    g.fillStyle(0x7a5137, 1);
+    g.fillRect(hx, hy - 24, 56, 36);
+    g.fillStyle(0xff6b5c, 1);
+    g.fillRect(hx - 8, hy - 40, 72, 16);
+    g.fillStyle(0x4d2f22, 1);
+    g.fillRect(hx + 22, hy - 5, 12, 17);
+    g.fillStyle(0xbbeeff, 1);
+    g.fillRect(hx + 8, hy - 15, 10, 9);
+    g.fillRect(hx + 40, hy - 15, 10, 9);
+    this.add
+      .text(STORY_POS.x, hy + 28, "스토리 존", {
+        fontSize: "11px",
+        fontStyle: "bold",
+        color: "#4f3726",
+      })
+      .setOrigin(0.5)
+      .setDepth(1);
+
+    for (let tx = 48; tx < 910; tx += 118) {
+      g.fillStyle(0x07101a, 0.18);
+      g.fillEllipse(tx + 12, GAME_H - 20, 38, 12);
+      g.fillStyle(0x76502f, 1);
+      g.fillRect(tx + P * 2, GAME_H - P * 9, P * 2, P * 7);
+      g.fillStyle(0x4f9e61, 1);
+      g.fillRect(tx - P, GAME_H - P * 17, P * 8, P * 8);
+      g.fillStyle(0x64bd72, 1);
+      g.fillRect(tx, GAME_H - P * 20, P * 6, P * 4);
+      g.fillStyle(0x3e844e, 1);
+      g.fillRect(tx + P, GAME_H - P * 9, P * 4, P);
+    }
+  }
+
   private drawHpBars(): void {
     this.hpG.clear();
     for (const m of this.mobs) {
@@ -1271,6 +1398,11 @@ export class GameScene extends Phaser.Scene {
       const h = m.isBoss ? 7 : 5;
       const y = m.y - (m.isBoss ? 31 : 19);
       const ratio = Phaser.Math.Clamp(m.hp / m.maxHp, 0, 1);
+      const ring = m.golden ? 0xffd166 : m.isBoss ? 0xff5b6b : 0x83e6ff;
+      this.hpG.fillStyle(0x02060d, 0.34);
+      this.hpG.fillEllipse(m.x, m.y + (m.isBoss ? 15 : 10), m.isBoss ? 54 : 32, m.isBoss ? 16 : 10);
+      this.hpG.lineStyle(m.isBoss ? 3 : 2, ring, m.isBoss || m.golden ? 0.92 : 0.72);
+      this.hpG.strokeCircle(m.x, m.y, m.isBoss ? 23 : 14);
       this.hpG.fillStyle(0x000000, 0.65);
       this.hpG.fillRect(m.x - w / 2, y, w, h);
       this.hpG.fillStyle(m.isBoss ? 0xff2e2e : 0x65d46e, 1);

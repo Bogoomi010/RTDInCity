@@ -235,12 +235,14 @@ export class TitleScene extends Phaser.Scene {
   private menuButton(y: number, label: string, primary: boolean, onClick: () => void): void {
     const w = primary ? 264 : 216;
     const h = primary ? 58 : 46;
+    const fill = primary ? 0x2563d8 : 0x141c2f;
+    const fillHover = primary ? 0x3a7cff : 0x1e2b48;
+    const stroke = primary ? 0xffd166 : 0x60708d;
+    this.add.rectangle(GAME_W / 2 + P, y + P, w, h, 0x050816, 0.42).setDepth(0);
     const box = this.add
-      .rectangle(GAME_W / 2, y, w, h, 0xffffff)
-      .setStrokeStyle(P, primary ? 0x3f5b9e : 0x5a6478)
+      .rectangle(GAME_W / 2, y, w, h, fill)
+      .setStrokeStyle(P, stroke)
       .setInteractive({ useHandCursor: true });
-    // 픽셀 그림자
-    this.add.rectangle(GAME_W / 2 + P, y + P, w, h, 0x1c2440, 0.25).setDepth(box.depth - 1);
     box.setDepth(1);
 
     // 텍스트는 인터랙티브로 만들지 않는다 — Phaser는 인터랙티브 객체만 히트 테스트하므로
@@ -249,15 +251,15 @@ export class TitleScene extends Phaser.Scene {
       .text(GAME_W / 2, y, label, {
         fontSize: primary ? "13px" : "11px",
         fontStyle: "bold",
-        color: primary ? "#2b3a6b" : "#3a4152",
+        color: primary ? "#ffffff" : "#dce8ff",
         fontFamily: FONT,
       })
       .setOrigin(0.5)
       .setScale(3)
       .setDepth(2);
 
-    box.on("pointerover", () => box.setFillStyle(0xfff4c8));
-    box.on("pointerout", () => box.setFillStyle(0xffffff));
+    box.on("pointerover", () => box.setFillStyle(fillHover));
+    box.on("pointerout", () => box.setFillStyle(fill));
     box.on("pointerdown", onClick);
   }
 

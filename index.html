@@ -781,6 +781,240 @@
         margin: 0;
         color: #b8bcc4;
       }
+
+      /* Character-first visual refresh */
+      :root {
+        --ui-ink: #f4f7fb;
+        --ui-muted: #9fb0c8;
+        --ui-panel: rgba(9, 14, 26, 0.9);
+        --ui-panel-2: rgba(17, 26, 43, 0.88);
+        --ui-line: rgba(143, 177, 221, 0.36);
+        --ui-gold: #ffd166;
+        --ui-blue: #3a7cff;
+        --ui-cyan: #83e6ff;
+      }
+      body {
+        background:
+          radial-gradient(circle at 50% 16%, rgba(86, 180, 240, 0.28), transparent 30%),
+          linear-gradient(180deg, #0d1424 0%, #070a12 100%);
+      }
+      #ui {
+        color: var(--ui-ink);
+        text-shadow: 0 1px 0 rgba(0, 0, 0, 0.45);
+      }
+      #topbar {
+        height: 54px;
+        padding: 8px 14px;
+        background: linear-gradient(180deg, rgba(9, 14, 26, 0.96), rgba(11, 18, 32, 0.76));
+        border-bottom: 1px solid rgba(131, 230, 255, 0.26);
+        box-shadow: 0 10px 28px rgba(0, 0, 0, 0.24);
+        backdrop-filter: blur(5px);
+      }
+      .stat {
+        min-width: 84px;
+        padding: 6px 10px;
+        background: rgba(255, 255, 255, 0.07);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 8px;
+        color: var(--ui-muted);
+      }
+      .stat b {
+        color: var(--ui-gold);
+      }
+      #panel {
+        top: 66px;
+        width: 306px;
+        padding: 12px;
+        background: linear-gradient(180deg, var(--ui-panel), rgba(8, 12, 22, 0.84));
+        border: 1px solid var(--ui-line);
+        border-radius: 10px;
+        box-shadow:
+          0 18px 42px rgba(0, 0, 0, 0.42),
+          inset 0 1px 0 rgba(255, 255, 255, 0.08);
+        backdrop-filter: blur(6px);
+      }
+      button.big {
+        border-radius: 8px;
+        color: #eff6ff;
+        background: linear-gradient(180deg, #263a5f 0%, #17233b 100%);
+        border: 1px solid rgba(143, 177, 221, 0.5);
+        box-shadow:
+          inset 0 1px 0 rgba(255, 255, 255, 0.12),
+          0 8px 0 rgba(2, 6, 18, 0.34);
+      }
+      button.big:hover:not(:disabled) {
+        background: linear-gradient(180deg, #345384 0%, #1d3054 100%);
+        transform: translateY(-1px);
+      }
+      button.big:active:not(:disabled) {
+        transform: translateY(2px);
+        box-shadow: 0 4px 0 rgba(2, 6, 18, 0.34);
+      }
+      #h-gacha {
+        background: linear-gradient(180deg, #3d82ff 0%, #2258cc 100%);
+        border-color: rgba(131, 230, 255, 0.8);
+        box-shadow:
+          0 0 22px rgba(58, 124, 255, 0.34),
+          0 8px 0 rgba(4, 17, 52, 0.46);
+      }
+      #unitInfo,
+      #story,
+      #recipes,
+      #combos,
+      #tickets,
+      #deckPanel,
+      #book .dpanel,
+      #stocks-panel .dpanel,
+      #picker .dpanel,
+      #dex .dpanel,
+      #settings .spanel,
+      #cards .card,
+      #result {
+        background: linear-gradient(180deg, rgba(20, 31, 52, 0.94), rgba(10, 15, 27, 0.92));
+        border: 1px solid var(--ui-line);
+        border-radius: 8px;
+        box-shadow:
+          inset 0 1px 0 rgba(255, 255, 255, 0.08),
+          0 12px 26px rgba(0, 0, 0, 0.28);
+      }
+      #unitInfo,
+      #story,
+      #recipes,
+      #combos,
+      #tickets {
+        color: #dbe8ff;
+      }
+      #story small,
+      #unitInfo small,
+      #recipes small,
+      #combos small,
+      #tickets small {
+        color: var(--ui-muted);
+      }
+      #cards {
+        background: linear-gradient(180deg, rgba(4, 8, 16, 0.62), rgba(4, 8, 16, 0.84));
+      }
+      #cards .card {
+        border-color: rgba(131, 230, 255, 0.32);
+      }
+      #cards .card b,
+      #book h2,
+      #stocks-panel h2,
+      #picker h2,
+      #dex h2,
+      #settings h2 {
+        color: #fff2c2;
+      }
+      #book .btab,
+      #stocks-panel .btab,
+      #picker .btab {
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        color: #dce8ff;
+      }
+      #book .btab.on,
+      #stocks-panel .btab.on,
+      #picker .btab.on {
+        background: linear-gradient(180deg, #355fba, #203f84);
+        border-color: rgba(131, 230, 255, 0.55);
+      }
+      #book .brow,
+      #stocks-panel .brow {
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.055);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+      }
+      #book .brow:disabled {
+        opacity: 0.72;
+        color: #7e8da7;
+      }
+      .dkpanel {
+        width: min(1100px, calc(100vw - 70px));
+        background:
+          radial-gradient(circle at 28% 8%, rgba(131, 230, 255, 0.18), transparent 28%),
+          linear-gradient(180deg, rgba(15, 24, 42, 0.97), rgba(7, 11, 21, 0.96));
+        border: 1px solid rgba(255, 209, 102, 0.42);
+        border-radius: 10px;
+        box-shadow: 0 26px 70px rgba(0, 0, 0, 0.55);
+      }
+      .dkstage {
+        background:
+          linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.025)),
+          rgba(5, 9, 18, 0.54);
+        border: 1px solid rgba(143, 177, 221, 0.25);
+        border-radius: 8px;
+      }
+      .dkchar {
+        background:
+          radial-gradient(circle at 50% 18%, rgba(255, 255, 255, 0.12), transparent 30%),
+          linear-gradient(180deg, #17223a, #0d1425);
+        border: 1px solid rgba(143, 177, 221, 0.34);
+        border-radius: 8px;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+      }
+      .dkchar:hover {
+        border-color: rgba(131, 230, 255, 0.8);
+        transform: translateY(-2px);
+      }
+      .dkchar.on {
+        background: linear-gradient(180deg, rgba(58, 124, 255, 0.34), rgba(14, 27, 55, 0.96));
+        border-color: var(--ui-gold);
+        box-shadow: 0 0 0 2px rgba(255, 209, 102, 0.28);
+      }
+      .dkparty {
+        align-items: stretch;
+        gap: 10px;
+      }
+      .dkslotGroup {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+      .dkslotLabel {
+        color: var(--ui-muted);
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.02em;
+      }
+      .dkslotsMain,
+      .dkslotsHidden {
+        display: flex;
+        gap: 8px;
+      }
+      .dkslotDivider {
+        width: 1px;
+        align-self: stretch;
+        background: rgba(143, 177, 221, 0.22);
+      }
+      .dkslot {
+        background: rgba(255, 255, 255, 0.055);
+        border-color: rgba(143, 177, 221, 0.32);
+        border-radius: 8px;
+      }
+      .dkslot.filled {
+        background: rgba(58, 124, 255, 0.18);
+        border-color: rgba(131, 230, 255, 0.62);
+      }
+      .hiddenslot {
+        opacity: 0.62;
+        filter: saturate(0.75);
+      }
+      #dk-info {
+        background: rgba(5, 9, 18, 0.55);
+        border: 1px solid rgba(143, 177, 221, 0.22);
+        border-radius: 8px;
+        color: #dce8ff;
+      }
+      #msg {
+        top: 74px;
+        padding: 8px 12px;
+        background: rgba(6, 10, 19, 0.82);
+        border: 1px solid rgba(255, 209, 102, 0.42);
+        border-radius: 8px;
+        box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
+        color: #fff7d6;
+      }
     </style>
   </head>
   <body>

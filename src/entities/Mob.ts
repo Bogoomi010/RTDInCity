@@ -41,7 +41,11 @@ export class Mob extends Phaser.GameObjects.Image {
     this.golden = stats.golden ?? false;
     this.dist = startDist;
     this.setTint(stats.color ?? (stats.boss ? 0xff2e2e : 0xd9534f));
-    if (stats.scale) this.setScale(stats.scale);
+    if (stats.scale) {
+      this.setScale(stats.scale);
+    } else {
+      this.setScale(this.isBoss ? 1.08 : this.golden ? 1.18 : 1);
+    }
     this.setDepth(5);
     const p = loop.posAt(startDist);
     this.setPosition(p.x, p.y);
